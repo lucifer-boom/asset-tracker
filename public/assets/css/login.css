@@ -1,0 +1,198 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: "Segoe UI", Arial, sans-serif;
+}
+
+body,
+html {
+    height: 100%;
+}
+
+h2 {
+    font-family: 'Roboto', sans-serif;
+}
+
+.login-container {
+    display: flex;
+    height: 100vh;
+}
+
+.login-left {
+    position: relative;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f4f4f4;
+    overflow: hidden;
+}
+
+.login-left img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.overlay-cards {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80%;
+    max-width: 400px;
+    text-align: center;
+}
+
+.overlay-cards .card {
+    display: none;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    animation: fade 0.5s ease-in-out;
+}
+
+.overlay-cards .card.active {
+    display: block;
+}
+
+@keyframes fade {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dots {
+    margin-top: 15px;
+}
+
+.dots .dot {
+    height: 12px;
+    width: 12px;
+    margin: 0 5px;
+    background: #bbb;
+    border-radius: 50%;
+    display: inline-block;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.dots .dot.active {
+    background: #333;
+}
+
+.login-right {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(45deg, #01013D, #003CB4);
+}
+
+.login-box {
+    width: 80%;
+    max-width: 400px;
+}
+
+.login-box h2 {
+    margin-bottom: 10px;
+    font-size: 28px;
+    background: linear-gradient(45deg, #BFF5FE, #00778c);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    /* for Firefox */
+}
+
+.login-box p {
+    margin-bottom: 20px;
+    color: white;
+}
+
+.form-group {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+input[type=text],
+input[type=password] {
+    width: 100%;
+    padding: 12px 40px 12px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.toggle-icon {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    user-select: none;
+    font-size: 16px;
+    color: #666;
+}
+
+.toggle-icon.show-password {
+    color: #007bff;
+}
+
+button.login-btn {
+    background: linear-gradient(90deg, #007bff, #003c7d);
+    background-size: 200% auto;
+    color: #fff;
+    font-size: 18px;
+    font-weight: bold;
+    padding: 12px 28px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: background-position 0.5s ease;
+}
+
+button.login-btn:hover {
+    background-position: right center;
+    /* slide effect */
+}
+
+.error {
+    margin-bottom: 10px;
+    background-color: red;
+    padding: 10px;
+}
+
+.success {
+    background-color: green;
+    margin-bottom: 10px;
+    padding: 10px;
+}
+
+.footer-text {
+    margin-top: 15px;
+    font-size: 14px;
+    color: #888;
+    text-align: center;
+}
+
+
+/* Responsive */
+
+@media (max-width: 768px) {
+    .login-container {
+        flex-direction: column;
+    }
+    .login-left {
+        height: 200px;
+    }
+    .login-right {
+        height: calc(100% - 200px);
+    }
+}
