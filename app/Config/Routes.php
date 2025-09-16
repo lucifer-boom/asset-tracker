@@ -84,6 +84,7 @@ $routes->get('/asset-transfer/pending', 'AssetTransferController::pending');
 $routes->post('asset-transfer/approve/(:num)', 'AssetTransferController::approve/$1');
 $routes->get('/assets/asset-transfer/received', 'AssetTransferController::received');
 $routes->post('asset-transfer/receiveAsset/(:num)', 'AssetTransferController::receiveAsset/$1');
+$routes->get('/asset-transfer/downloadTransferNote/(:num)', 'AssetTransferController::downloadTransferNote/$1');
 
 
 

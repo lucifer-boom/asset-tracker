@@ -7,6 +7,7 @@ use App\Models\AssetTransferModel;
 use App\Models\UserModel;
 use App\Models\DepartmentModel;
 use CodeIgniter\Controller;
+use Dompdf\Dompdf;
 
 class AssetTransferController extends Controller
 {
@@ -300,6 +301,25 @@ public function receiveAsset($id)
     ]);
 
     return redirect()->back()->with('success', 'Asset marked as received successfully.');
+}
+
+public function downloadTransferNote($id)
+{
+    $transferModel = new \App\Models\AssetTransferModel();
+    $transfer = $transferModel->getTransferWithDetails($id); // Make sure your model fetches all related fields including approvals
+
+    if (!$transfer) {
+        return redirect()->back()->with('error', 'Transfer not found.');
+    }
+
+    $html = view('assets/transfer_note_pdf', ['transfer' => $transfer]);
+
+    $dompdf = new Dompdf();
+    $dompdf->loadHtml($html);
+    $dompdf->setPaper('A4', 'portrait');
+    $dompdf->render();
+
+    $dompdf->stream('Asset_Transfer_Form_'.$transfer['asset_code'].'.pdf', ['Attachment' => true]);
 }
 
 

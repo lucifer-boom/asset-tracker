@@ -43,7 +43,7 @@ class AssetController extends Controller
         echo view('includes/footer');
     }
 
-   public function store()
+  public function store()
 {
     $assetModel      = new AssetModel();
     $modelModel      = new \App\Models\ModelModel();
@@ -56,18 +56,13 @@ class AssetController extends Controller
     $category_id   = $this->request->getPost('category_id');
     $model_id      = $this->request->getPost('model_id');
 
-    $data['departments'] = $departmentModel->findAll();
+    $department    = $departmentModel->asArray()->find($department_id);
 
+    if (empty($department_id)) {
+        throw new \Exception("Please select a department before saving the asset.");
+    }
 
-$department_id = $this->request->getPost('department_id');
-$department    = $departmentModel->asArray()->find($department_id);
-
-if (empty($department_id)) {
-    throw new \Exception("Please select a department before saving the asset.");
-}
-
-$deptCode = !empty($department['code']) ? $department['code'] : 'NA';
-
+    $deptCode = !empty($department['code']) ? $department['code'] : 'NA';
 
     // Fetch category
     $category = $categoryModel->find($category_id);
@@ -83,8 +78,8 @@ $deptCode = !empty($department['code']) ? $department['code'] : 'NA';
     }
 
     // Fetch sub-category for model
-$subCategory = $subCategoryModel->find($model['sub_category_id']);
-$subCatCode  = $subCategory['sub_category_code'] ?? 'NA'; // use code, fallback if not found
+    $subCategory = $subCategoryModel->find($model['sub_category_id']);
+    $subCatCode  = $subCategory['sub_category_code'] ?? 'NA';
 
     // Get last asset sequence
     $lastAsset = $assetModel
@@ -113,12 +108,36 @@ $subCatCode  = $subCategory['sub_category_code'] ?? 'NA'; // use code, fallback 
         'warranty_years'   => $this->request->getPost('warranty_years'),
         'supplier_id'      => $this->request->getPost('supplier_id'),
         'value'            => $this->request->getPost('value'),
-        'department_id'    => $department_id, // must match allowedFields
-       
+        'department_id'    => $department_id,
     ]);
+
+    // Get the newly created asset ID
+    $assetId = $assetModel->getInsertID();
+
+    // --- Generate QR Code automatically ---
+    $folder = WRITEPATH . 'qrcodes/';
+    if (!is_dir($folder)) {
+        mkdir($folder, 0777, true);
+    }
+
+    $qrContent = "Asset ID: {$assetId}\nModel: {$model['name']}\nCode: {$assetCode}";
+
+    $result = \Endroid\QrCode\Builder\Builder::create()
+        ->writer(new \Endroid\QrCode\Writer\PngWriter())
+        ->data($qrContent)
+        ->encoding(new \Endroid\QrCode\Encoding\Encoding('UTF-8'))
+        ->errorCorrectionLevel(new \Endroid\QrCode\ErrorCorrectionLevel\ErrorCorrectionLevelHigh())
+        ->size(300)
+        ->margin(10)
+        ->build();
+
+    $fileName = $folder . 'asset_' . $assetId . '.png';
+    $result->saveToFile($fileName);
+    // -------------------------------------
 
     return redirect()->to('/assets/manage');
 }
+
 
     public function update($id)
     {

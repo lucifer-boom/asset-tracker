@@ -41,24 +41,31 @@ class AssetTransferModel extends Model
     /**
      * Get all transfers with joined data
      */
-    public function getAllTransfers()
-    {
-        return $this->select('
-                    asset_transfers.*,
-                    asset_models.name AS asset_name,
-                    assets.asset_code,
-                    from_dept.name AS from_location_name,
-                    to_dept.name AS to_location_name,
-                    users.username AS custodian_name
-                ')
-                ->join('assets', 'assets.id = asset_transfers.asset_id')
-                ->join('asset_models', 'asset_models.id = assets.model_id')
-                ->join('departments AS from_dept', 'from_dept.id = asset_transfers.from_location', 'left')
-                ->join('departments AS to_dept', 'to_dept.id = asset_transfers.to_location', 'left')
-                ->join('users', 'users.id = asset_transfers.asset_custodian', 'left')
-                ->orderBy('asset_transfers.transfer_date', 'DESC')
-                ->findAll();
-    }
+   public function getAllTransfers()
+{
+    return $this->select('
+                asset_transfers.*,
+                asset_models.name AS asset_name,
+                assets.asset_code,
+                from_dept.name AS from_location_name,
+                to_dept.name AS to_location_name,
+                users.username AS custodian_name,
+                u_hod.username AS hod_name,
+                u_admin.username AS admin_name,
+                u_ceo.username AS ceo_name
+            ')
+            ->join('assets', 'assets.id = asset_transfers.asset_id')
+            ->join('asset_models', 'asset_models.id = assets.model_id')
+            ->join('departments AS from_dept', 'from_dept.id = asset_transfers.from_location', 'left')
+            ->join('departments AS to_dept', 'to_dept.id = asset_transfers.to_location', 'left')
+            ->join('users', 'users.id = asset_transfers.asset_custodian', 'left')
+            ->join('users AS u_hod', 'u_hod.id = asset_transfers.hod_approval', 'left')
+            ->join('users AS u_admin', 'u_admin.id = asset_transfers.admin_approval', 'left')
+            ->join('users AS u_ceo', 'u_ceo.id = asset_transfers.ceo_approval', 'left')
+            ->orderBy('asset_transfers.transfer_date', 'DESC')
+            ->findAll();
+}
+
 
     /**
      * Get all past approvals or received assets
@@ -86,4 +93,30 @@ class AssetTransferModel extends Model
                 ->orderBy('asset_transfers.transfer_date', 'DESC')
                 ->findAll();
     }
+
+    public function getTransferWithDetails($id)
+{
+    return $this->select('
+                asset_transfers.*,
+                asset_models.name AS asset_name,
+                assets.asset_code,
+                from_dept.name AS from_location_name,
+                to_dept.name AS to_location_name,
+                users.username AS custodian_name,
+                u_hod.username AS hod_name,
+                u_admin.username AS admin_name,
+                u_ceo.username AS ceo_name
+            ')
+            ->join('assets', 'assets.id = asset_transfers.asset_id')
+            ->join('asset_models', 'asset_models.id = assets.model_id')
+            ->join('departments AS from_dept', 'from_dept.id = asset_transfers.from_location', 'left')
+            ->join('departments AS to_dept', 'to_dept.id = asset_transfers.to_location', 'left')
+            ->join('users', 'users.id = asset_transfers.asset_custodian', 'left')
+            ->join('users AS u_hod', 'u_hod.id = asset_transfers.hod_approval', 'left')
+            ->join('users AS u_admin', 'u_admin.id = asset_transfers.admin_approval', 'left')
+            ->join('users AS u_ceo', 'u_ceo.id = asset_transfers.ceo_approval', 'left')
+            ->where('asset_transfers.id', $id)
+            ->first();
+}
+
 }
