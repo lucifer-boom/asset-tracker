@@ -14,41 +14,47 @@ class AssetAssignmentController extends BaseController
         $assignmentModel = new AssetAssignmentModel();
         $userModel = new UserModel();
 
-        // Assets & Users for Assign Asset modal
         $data['assets'] = $assetModel
-            ->whereNotIn('id', function ($builder) {
+            ->select('assets.id, assets.asset_code, asset_models.name as model_name')
+            ->join('asset_models', 'asset_models.id = assets.model_id', 'left')
+            ->whereNotIn('assets.id', function ($builder) {
                 $builder->select('asset_id')
                     ->from('assets_assignments')
                     ->where('status', 'assigned');
             })
             ->findAll();
 
+
         $data['users'] = $userModel
-    ->select('users.id, users.username, departments.name as department_name')
-    ->join('departments', 'departments.id = users.department_id', 'left')
-    ->orderBy('users.username', 'ASC')
-    ->findAll();
+            ->select('users.id, users.username, departments.name as department_name')
+            ->join('departments', 'departments.id = users.department_id', 'left')
+            ->orderBy('users.username', 'ASC')
+            ->findAll();
 
 
-      $data['activeAssignments'] = $assignmentModel
-    ->select('assets_assignments.id, assets.asset_code, users.username, departments.name as department_name')
-    ->join('assets', 'assets.id = assets_assignments.asset_id')
-    ->join('users', 'users.id = assets_assignments.user_id')
-    ->join('departments', 'departments.id = users.department_id', 'left')
-    ->where('assets_assignments.status', 'assigned')
-    ->findAll();
+        $data['activeAssignments'] = $assignmentModel
+            ->select('assets_assignments.id, assets.asset_code, asset_models.name as model_name, users.username, departments.name as department_name')
+            ->join('assets', 'assets.id = assets_assignments.asset_id')
+            ->join('asset_models', 'asset_models.id = assets.model_id', 'left')
+            ->join('users', 'users.id = assets_assignments.user_id')
+            ->join('departments', 'departments.id = users.department_id', 'left')
+            ->where('assets_assignments.status', 'assigned')
+            ->findAll();
+
 
 
 
 
         // Assignment History
-      $data['history'] = $assignmentModel
-    ->select('assets_assignments.id, assets.asset_code, users.username, departments.name as department_name, assets_assignments.assigned_date, assets_assignments.returned_date, assets_assignments.remarks, assets_assignments.status')
-    ->join('assets', 'assets.id = assets_assignments.asset_id')
-    ->join('users', 'users.id = assets_assignments.user_id')
-    ->join('departments', 'departments.id = users.department_id', 'left')
-    ->orderBy('assets_assignments.id', 'DESC')
-    ->findAll();
+        $data['history'] = $assignmentModel
+            ->select('assets_assignments.id, assets.asset_code, asset_models.name as model_name, users.username, departments.name as department_name, assets_assignments.assigned_date, assets_assignments.returned_date, assets_assignments.remarks, assets_assignments.status')
+            ->join('assets', 'assets.id = assets_assignments.asset_id')
+            ->join('asset_models', 'asset_models.id = assets.model_id', 'left')
+            ->join('users', 'users.id = assets_assignments.user_id')
+            ->join('departments', 'departments.id = users.department_id', 'left')
+            ->orderBy('assets_assignments.id', 'DESC')
+            ->findAll();
+
 
 
 
