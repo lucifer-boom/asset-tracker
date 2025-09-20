@@ -87,6 +87,7 @@
                             <th>Approval Status</th>
                             <th>Received Date Assets</th>
                             <th>Received By</th>
+                            <th>Transfer Note
                         </tr>
                     </thead>
                     <tbody>
@@ -131,6 +132,12 @@
                                         <span class="badge bg-warning text-dark">Not Received</span>
                                     <?php endif; ?>
                                 </td>
+                                <td>
+<a href="<?= base_url('asset-transfer/downloadTransferNote/'.$transfer['id']) ?>" target="_blank">
+    <i class="fa-solid fa-download"></i>
+</a>
+                                </td>
+
                             </tr>
                         <?php endforeach; ?>
                     </tbody>

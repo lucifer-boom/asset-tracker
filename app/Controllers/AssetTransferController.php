@@ -7,6 +7,7 @@ use App\Models\AssetTransferModel;
 use App\Models\UserModel;
 use App\Models\DepartmentModel;
 use CodeIgniter\Controller;
+use Dompdf\Dompdf;
 
 class AssetTransferController extends Controller
 {
@@ -299,7 +300,43 @@ public function receiveAsset($id)
         'received_by'   => $userId
     ]);
 
+    $transferModel->update($id, [
+    'received_date' => date('Y-m-d'),
+    'received_by'   => $userId
+]);
+
+
     return redirect()->back()->with('success', 'Asset marked as received successfully.');
+}
+
+public function downloadTransferNote($id)
+{
+    $transferModel = new \App\Models\AssetTransferModel();
+    $userModel     = new \App\Models\UserModel();
+
+    // Fetch transfer with all other details
+    $transfer = $transferModel->getTransferWithDetails($id);
+
+    if (!$transfer) {
+        return redirect()->back()->with('error', 'Transfer not found.');
+    }
+
+    // Get HOD of the receiving (to_location) department
+    $receivingHod = $userModel->getHodByDepartment($transfer['to_location']);
+    $transfer['to_hod_name'] = $receivingHod['username'] ?? '___________________';
+
+    // Ensure received date is displayed if set
+    $transfer['received_date'] = $transfer['received_date'] ?? '___________________';
+
+    // Generate PDF
+    $html = view('assets/transfer_note_pdf', ['transfer' => $transfer]);
+
+    $dompdf = new \Dompdf\Dompdf();
+    $dompdf->loadHtml($html);
+    $dompdf->setPaper('A4', 'portrait');
+    $dompdf->render();
+
+    $dompdf->stream('Asset_Transfer_Form_'.$transfer['asset_code'].'.pdf', ['Attachment' => true]);
 }
 
 
