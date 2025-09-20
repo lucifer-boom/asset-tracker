@@ -111,6 +111,7 @@
         <thead>
           <tr>
             <th>Asset Code</th>
+            <th>Model Name</th>
             <th>Assigned To</th>
             <th>Assigned Date</th>
             <th>Return Date</th>
@@ -122,6 +123,7 @@
           <?php foreach ($history as $h): ?>
             <tr>
               <td><?= $h['asset_code'] ?></td>
+              <td><?= $h['model_name'] ?></td> 
               <td><?= $h['username'] ?> (<?= $h['department_name'] ?? 'No Department' ?>)</td>
               <td><?= $h['assigned_date'] ?></td>
               <td><?= $h['returned_date'] ?? '<span class="badge bg-success">Not Returned</span>' ?></td>

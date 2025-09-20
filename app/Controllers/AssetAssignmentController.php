@@ -47,12 +47,14 @@ class AssetAssignmentController extends BaseController
 
         // Assignment History
         $data['history'] = $assignmentModel
-            ->select('assets_assignments.id, assets.asset_code, users.username, departments.name as department_name, assets_assignments.assigned_date, assets_assignments.returned_date, assets_assignments.remarks, assets_assignments.status')
+            ->select('assets_assignments.id, assets.asset_code, asset_models.name as model_name, users.username, departments.name as department_name, assets_assignments.assigned_date, assets_assignments.returned_date, assets_assignments.remarks, assets_assignments.status')
             ->join('assets', 'assets.id = assets_assignments.asset_id')
+            ->join('asset_models', 'asset_models.id = assets.model_id', 'left')
             ->join('users', 'users.id = assets_assignments.user_id')
             ->join('departments', 'departments.id = users.department_id', 'left')
             ->orderBy('assets_assignments.id', 'DESC')
             ->findAll();
+
 
 
 
