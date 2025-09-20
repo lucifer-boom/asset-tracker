@@ -133,9 +133,9 @@
                                     <?php endif; ?>
                                 </td>
                                 <td>
-<a href="<?= base_url('asset-transfer/downloadTransferNote/'.$transfer['id']) ?>" target="_blank">
-    <i class="fa-solid fa-download"></i>
-</a>
+                                    <a href="<?= base_url('asset-transfer/downloadTransferNote/' . $transfer['id']) ?>" target="_blank">
+                                        <i class="fa-solid fa-download"></i>
+                                    </a>
                                 </td>
 
                             </tr>
@@ -152,22 +152,22 @@
 
 
 
-            <script>
-                const searchInput = document.getElementById('assetSearch');
-                const select = document.getElementById('assetSelect');
+<script>
+    const searchInput = document.getElementById('assetSearch');
+    const select = document.getElementById('assetSelect');
 
-                searchInput.addEventListener('keyup', function() {
-                    const filter = this.value.toLowerCase();
+    searchInput.addEventListener('keyup', function() {
+        const filter = this.value.toLowerCase();
 
-                    for (let i = 0; i < select.options.length; i++) {
-                        const option = select.options[i];
-                        const text = option.text.toLowerCase();
+        for (let i = 0; i < select.options.length; i++) {
+            const option = select.options[i];
+            const text = option.text.toLowerCase();
 
-                        if (text.includes(filter)) {
-                            option.style.display = '';
-                        } else {
-                            option.style.display = 'none';
-                        }
-                    }
-                });
-            </script>
+            if (text.includes(filter)) {
+                option.style.display = '';
+            } else {
+                option.style.display = 'none';
+            }
+        }
+    });
+</script>
