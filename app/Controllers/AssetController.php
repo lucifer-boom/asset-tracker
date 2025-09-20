@@ -42,13 +42,12 @@ class AssetController extends Controller
         echo view('assets/assets_manage', $data);
         echo view('includes/footer');
     }
-
-  public function store()
+public function store()
 {
-    $assetModel      = new AssetModel();
-    $modelModel      = new \App\Models\ModelModel();
-    $categoryModel   = new \App\Models\CategoryModel();
-    $departmentModel = new \App\Models\DepartmentModel();
+    $assetModel       = new AssetModel();
+    $modelModel       = new \App\Models\ModelModel();
+    $categoryModel    = new \App\Models\CategoryModel();
+    $departmentModel  = new \App\Models\DepartmentModel();
     $subCategoryModel = new \App\Models\SubCategoryModel();
 
     // Get selected IDs from POST
@@ -56,49 +55,51 @@ class AssetController extends Controller
     $category_id   = $this->request->getPost('category_id');
     $model_id      = $this->request->getPost('model_id');
 
-    $department    = $departmentModel->asArray()->find($department_id);
-
+    // Validate Department
     if (empty($department_id)) {
         throw new \Exception("Please select a department before saving the asset.");
     }
 
-    $deptCode = !empty($department['code']) ? $department['code'] : 'NA';
+    $department = $departmentModel->asArray()->find($department_id);
+    $deptCode   = $department['code'] ?? 'NA';
 
-    // Fetch category
+    // Validate Category
     $category = $categoryModel->find($category_id);
     if (!$category) {
         throw new \Exception("Category not found!");
     }
     $catCode = $category['code'];
 
-    // Fetch model
+    // Validate Model
     $model = $modelModel->find($model_id);
     if (!$model) {
         throw new \Exception("Model not found!");
     }
 
-    // Fetch sub-category for model
+    // Get sub-category from model
     $subCategory = $subCategoryModel->find($model['sub_category_id']);
-    $subCatCode  = $subCategory['sub_category_code'] ?? 'NA';
+    if (!$subCategory) {
+        throw new \Exception("Sub-category not found!");
+    }
 
-    // Get last asset sequence
+    $subCategoryCode = $subCategory['sub_category_code'] ?? 'NA';
+
+    // ---- Get last asset for this model ----
     $lastAsset = $assetModel
-        ->where('department_id', $department_id)
-        ->where('category_id', $category_id)
         ->where('model_id', $model_id)
         ->orderBy('id', 'DESC')
         ->first();
 
     $sequence = 1;
     if ($lastAsset && isset($lastAsset['asset_code'])) {
-        $lastCode = explode("/", $lastAsset['asset_code']);
-        $sequence = intval(end($lastCode)) + 1;
+        $lastCodeParts = explode("/", $lastAsset['asset_code']);
+        $sequence = intval(end($lastCodeParts)) + 1;
     }
 
-    // Generate Asset Code
-    $assetCode = $deptCode . '/' . $catCode . '/' . $subCatCode  . '/' . $sequence;
+    // ---- Generate Asset Code ----
+    $assetCode = $deptCode . '/' . $catCode . '/' . $subCategoryCode . '/' . $sequence;
 
-    // Save Asset
+    // ---- Save the Asset ----
     $assetModel->save([
         'model_id'         => $model_id,
         'category_id'      => $category_id,
@@ -111,10 +112,9 @@ class AssetController extends Controller
         'department_id'    => $department_id,
     ]);
 
-    // Get the newly created asset ID
     $assetId = $assetModel->getInsertID();
 
-    // --- Generate QR Code automatically ---
+    // ---- Generate QR Code ----
     $folder = WRITEPATH . 'qrcodes/';
     if (!is_dir($folder)) {
         mkdir($folder, 0777, true);
@@ -133,10 +133,10 @@ class AssetController extends Controller
 
     $fileName = $folder . 'asset_' . $assetId . '.png';
     $result->saveToFile($fileName);
-    // -------------------------------------
 
     return redirect()->to('/assets/manage');
 }
+
 
 
     public function update($id)

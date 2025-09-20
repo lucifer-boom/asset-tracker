@@ -77,7 +77,6 @@
                     </div>
 
                     <div class="form-group mb-2">
-                        <label for="department_id">Department</label>
                         <select class="form-control" name="department_id" id="department_id" required>
                             <option value="">-- Select Department --</option>
                             <?php foreach ($departments as $dept): ?>

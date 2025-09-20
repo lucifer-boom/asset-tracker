@@ -94,7 +94,7 @@ class AssetTransferModel extends Model
                 ->findAll();
     }
 
-    public function getTransferWithDetails($id)
+   public function getTransferWithDetails($id)
 {
     return $this->select('
                 asset_transfers.*,
@@ -105,7 +105,8 @@ class AssetTransferModel extends Model
                 users.username AS custodian_name,
                 u_hod.username AS hod_name,
                 u_admin.username AS admin_name,
-                u_ceo.username AS ceo_name
+                u_ceo.username AS ceo_name,
+                u_received.username AS received_by_name
             ')
             ->join('assets', 'assets.id = asset_transfers.asset_id')
             ->join('asset_models', 'asset_models.id = assets.model_id')
@@ -115,6 +116,7 @@ class AssetTransferModel extends Model
             ->join('users AS u_hod', 'u_hod.id = asset_transfers.hod_approval', 'left')
             ->join('users AS u_admin', 'u_admin.id = asset_transfers.admin_approval', 'left')
             ->join('users AS u_ceo', 'u_ceo.id = asset_transfers.ceo_approval', 'left')
+            ->join('users AS u_received', 'u_received.id = asset_transfers.received_by', 'left')
             ->where('asset_transfers.id', $id)
             ->first();
 }
