@@ -18,8 +18,9 @@
       <form action="/assets/assignments/store" method="post">
         <div class="modal-body">
           <div class="form-group">
-            <select name="asset_id" class="form-control" required>
-              <option value="">-- Select Asset --</option>
+            <input type="text" id="assignAssetSearch" class="form-control mb-2" placeholder="Search asset by code or model">
+
+            <select id="assignAssetSelect" name="asset_id" class="form-control searchable" size="5" required>
               <?php foreach ($assets as $a): ?>
                 <option value="<?= $a['id'] ?>">
                   <?= $a['asset_code'] ?> - <?= $a['model_name'] ?>
@@ -27,11 +28,14 @@
               <?php endforeach; ?>
             </select>
 
+
           </div>
           <div class="form-group">
             <!-- Assign Asset Modal -->
-            <select name="user_id" class="form-control" required>
-              <option value="">-- Select User --</option>
+            <input type="text" id="userSearch" class="form-control mb-2" placeholder="Search user...">
+
+            <select id="userSelect" name="user_id" class="form-control searchable" size="5">
+
               <?php foreach ($users as $u): ?>
                 <option value="<?= $u['id'] ?>">
                   <?= $u['username'] ?> (<?= $u['department_name'] ?? 'No Department' ?>)
@@ -70,15 +74,17 @@
       <form action="/assets/assignments/return" method="post">
         <div class="modal-body">
           <div class="form-group">
+            <input type="text" id="returnAssetSearch" class="form-control mb-2" placeholder="Search return asset...">
 
-            <select name="assignment_id" class="form-control" required>
-              <option value="">-- Select --</option>
+
+            <select id="returnAssetSelect" name="assignment_id" class="form-control searchable" size="5" required>
               <?php foreach ($activeAssignments as $as): ?>
                 <option value="<?= $as['id'] ?>">
-                  <?= $as['asset_code'] ?> - <?= $as['username'] ?> (<?= $as['department_name'] ?? 'No Department' ?>)
+                  <?= $as['asset_code'] ?> - <?= $as['model_name'] ?> | <?= $as['username'] ?> (<?= $as['department_name'] ?? 'No Department' ?>)
                 </option>
               <?php endforeach; ?>
             </select>
+
 
           </div>
           <div class="form-group">
@@ -123,7 +129,7 @@
           <?php foreach ($history as $h): ?>
             <tr>
               <td><?= $h['asset_code'] ?></td>
-              <td><?= $h['model_name'] ?></td> 
+              <td><?= $h['model_name'] ?></td>
               <td><?= $h['username'] ?> (<?= $h['department_name'] ?? 'No Department' ?>)</td>
               <td><?= $h['assigned_date'] ?></td>
               <td><?= $h['returned_date'] ?? '<span class="badge bg-success">Not Returned</span>' ?></td>
@@ -136,3 +142,24 @@
     </div>
   </div>
 </div>
+
+<script>
+  function setupSearch(inputId, selectId) {
+    const input = document.getElementById(inputId);
+    const select = document.getElementById(selectId);
+    if (!input || !select) return;
+
+    input.addEventListener('keyup', function() {
+      const filter = this.value.toLowerCase();
+      for (let i = 0; i < select.options.length; i++) {
+        const option = select.options[i];
+        option.style.display = option.text.toLowerCase().includes(filter) ? '' : 'none';
+      }
+    });
+  }
+
+  // Initialize searches
+  setupSearch('assignAssetSearch', 'assignAssetSelect');
+  setupSearch('userSearch', 'userSelect');
+  setupSearch('returnAssetSearch', 'returnAssetSelect');
+</script>
