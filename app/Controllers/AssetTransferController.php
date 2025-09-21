@@ -68,23 +68,26 @@ class AssetTransferController extends Controller
     $toDept   = $deptModel->find($toDeptId);
 
     // Step 1: HOD of custodian department
-    $hodApproval = $userModel->getHodByDepartment($loggedInUser['department_id']);
+    $hod = $userModel->getHodByDepartment($loggedInUser['department_id']);
+    $hodApproval = $hod ? $userModel->find($hod['id']) : null; // ensure full user record
 
-    // Step 2: HOD of Administration & Events department (always required)
+    // Step 2: HOD of Administration & Events department
     $adminDept = $deptModel->where('name', 'Administration & Events')->first();
-    $adminApproval = $adminDept ? $userModel->getHodByDepartment($adminDept['id']) : null;
+    $admin = $adminDept ? $userModel->getHodByDepartment($adminDept['id']) : null;
+    $adminApproval = $admin ? $userModel->find($admin['id']) : null;
 
-    // Step 3: CEO approval only if target department is external
+    // Step 3: CEO approval (if external)
     $ceoApproval = null;
     $ceoStatus   = null;
     if (isset($toDept['type']) && $toDept['type'] === 'external') {
         $ceoDept = $deptModel->where('name', 'CEO & Secretary')->first();
-        $ceoApproval = $ceoDept ? $userModel->getHodByDepartment($ceoDept['id']) : null;
+        $ceo = $ceoDept ? $userModel->getHodByDepartment($ceoDept['id']) : null;
+        $ceoApproval = $ceo ? $userModel->find($ceo['id']) : null;
         $ceoStatus   = $ceoApproval ? 'pending' : null;
     }
 
-    // Insert transfer request with status tracking
-    $transferModel->insert([
+    // Insert transfer request
+    $transferId = $transferModel->insert([
         'asset_id'        => $this->request->getPost('asset_id'),
         'from_location'   => $fromDeptId,
         'to_location'     => $toDeptId,
@@ -92,14 +95,46 @@ class AssetTransferController extends Controller
         'asset_custodian' => $loggedInUserId,
         'hod_approval'    => $hodApproval['id'] ?? null,
         'admin_approval'  => $adminApproval['id'] ?? null,
-        'ceo_approval'    => $ceoApproval['id'] ?? null,   // null if internal
+        'ceo_approval'    => $ceoApproval['id'] ?? null,
         'hod_status'      => $hodApproval ? 'pending' : null,
         'admin_status'    => $adminApproval ? 'pending' : null,
-        'ceo_status'      => $ceoStatus,                   // only set if external
+        'ceo_status'      => $ceoStatus,
         'reason_for_transfer' => $this->request->getPost('reason_for_transfer'),
     ]);
 
-    return redirect()->to('/assets/assets_transfers')->with('success', 'Transfer request submitted successfully');
+    /**
+     * 🔹 Send Email Notifications
+     */
+    $email = \Config\Services::email();
+
+    $approvers = [
+        $hodApproval,
+        $adminApproval,
+        $ceoApproval
+    ];
+
+    foreach ($approvers as $approver) {
+        if ($approver && !empty($approver['email'])) {
+            $email->clear(); // important when sending multiple emails
+            $email->setTo($approver['email']);
+            $email->setSubject('New Asset Transfer Request Pending Approval');
+            $email->setMessage("
+                Dear {$approver['username']},<br><br>
+                A new asset transfer request has been submitted by <b>{$loggedInUser['username']}</b>.<br><br>
+                <b>From Department:</b> {$fromDept['name']}<br>
+                <b>To Department:</b> {$toDept['name']}<br>
+                <b>Reason:</b> {$this->request->getPost('reason_for_transfer')}<br><br>
+                Please log in to the system to review and take action.<br><br>
+                Thank you.
+            ");
+
+            if (!$email->send()) {
+                log_message('error', 'Email sending failed: ' . print_r($email->printDebugger(), true));
+            }
+        }
+    }
+
+    return redirect()->to('/assets/assets_transfers')->with('success', 'Transfer request submitted successfully and notifications sent.');
 }
 
 
