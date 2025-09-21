@@ -10,7 +10,7 @@ class AssetTransferModel extends Model
     protected $allowedFields = [
         'asset_id', 'from_location', 'to_location', 'transfer_date',
         'asset_custodian', 'hod_approval', 'admin_approval', 'ceo_approval', 'reason_for_transfer', 
-        'hod_status', 'admin_status', 'ceo_status', 'received_date', 'received_by', 'hod_approval_date', 'admin_approval_date', 'ceo_approval_date'
+        'hod_status', 'admin_status', 'ceo_status', 'received_date', 'received_by', 'hod_approval_date', 'admin_approval_date', 'ceo_approval_date', 'approval_token'
     ];
 
     /**
