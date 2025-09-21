@@ -51,7 +51,7 @@ class AssetTransferController extends Controller
     /**
      * Store asset transfer request
      */
-   public function store()
+ public function store()
 {
     $transferModel = new AssetTransferModel();
     $userModel     = new UserModel();
@@ -69,14 +69,14 @@ class AssetTransferController extends Controller
 
     // Step 1: HOD of custodian department
     $hod = $userModel->getHodByDepartment($loggedInUser['department_id']);
-    $hodApproval = $hod ? $userModel->find($hod['id']) : null; // ensure full user record
+    $hodApproval = $hod ? $userModel->find($hod['id']) : null;
 
     // Step 2: HOD of Administration & Events department
     $adminDept = $deptModel->where('name', 'Administration & Events')->first();
     $admin = $adminDept ? $userModel->getHodByDepartment($adminDept['id']) : null;
     $adminApproval = $admin ? $userModel->find($admin['id']) : null;
 
-    // Step 3: CEO approval (if external)
+    // Step 3: CEO approval (only if target is external)
     $ceoApproval = null;
     $ceoStatus   = null;
     if (isset($toDept['type']) && $toDept['type'] === 'external') {
@@ -103,39 +103,30 @@ class AssetTransferController extends Controller
     ]);
 
     /**
-     * 🔹 Send Email Notifications
+     * 🔹 Send Email Notification to HOD ONLY (first step)
      */
-    $email = \Config\Services::email();
+    if ($hodApproval && !empty($hodApproval['email'])) {
+        $email = \Config\Services::email();
+        $email->setTo($hodApproval['email']);
+        $email->setSubject('New Asset Transfer Request Pending Your Approval');
+        $email->setMessage("
+            Dear {$hodApproval['username']},<br><br>
+            A new asset transfer request has been submitted by <b>{$loggedInUser['username']}</b>.<br><br>
+            <b>From Department:</b> {$fromDept['name']}<br>
+            <b>To Department:</b> {$toDept['name']}<br>
+            <b>Reason:</b> {$this->request->getPost('reason_for_transfer')}<br><br>
+            Please log in to the system to review and take action.<br><br>
+            Thank you.
+        ");
 
-    $approvers = [
-        $hodApproval,
-        $adminApproval,
-        $ceoApproval
-    ];
-
-    foreach ($approvers as $approver) {
-        if ($approver && !empty($approver['email'])) {
-            $email->clear(); // important when sending multiple emails
-            $email->setTo($approver['email']);
-            $email->setSubject('New Asset Transfer Request Pending Approval');
-            $email->setMessage("
-                Dear {$approver['username']},<br><br>
-                A new asset transfer request has been submitted by <b>{$loggedInUser['username']}</b>.<br><br>
-                <b>From Department:</b> {$fromDept['name']}<br>
-                <b>To Department:</b> {$toDept['name']}<br>
-                <b>Reason:</b> {$this->request->getPost('reason_for_transfer')}<br><br>
-                Please log in to the system to review and take action.<br><br>
-                Thank you.
-            ");
-
-            if (!$email->send()) {
-                log_message('error', 'Email sending failed: ' . print_r($email->printDebugger(), true));
-            }
+        if (!$email->send()) {
+            log_message('error', 'Email sending failed: ' . print_r($email->printDebugger(), true));
         }
     }
 
-    return redirect()->to('/assets/assets_transfers')->with('success', 'Transfer request submitted successfully and notifications sent.');
+    return redirect()->to('/assets/assets_transfers')->with('success', 'Transfer request submitted successfully and notification sent to HOD.');
 }
+
 
 
     /**
@@ -206,48 +197,83 @@ class AssetTransferController extends Controller
      * Approve or reject transfer
      */
     public function approve($id)
-    {
-        $action = $this->request->getPost('action');
-        $userId = session()->get('user_id');
-        $transferModel = new AssetTransferModel();
+{
+    $action = $this->request->getPost('action');
+    $userId = session()->get('user_id');
+    $transferModel = new AssetTransferModel();
+    $userModel     = new UserModel();
+    $deptModel     = new DepartmentModel();
 
-        $transfer = $transferModel->find($id);
+    $transfer = $transferModel->find($id);
 
-        if (!$transfer) {
-            return redirect()->back()->with('error', 'Transfer not found.');
-        }
-
-        $field = null;
-        $statusField = null;
-
-        // Determine which approval step the user can act on
-        if ($transfer['hod_approval'] == $userId && $transfer['hod_status'] == 'pending') {
-            $field = 'hod_approval';
-            $statusField = 'hod_status';
-        } elseif ($transfer['admin_approval'] == $userId && $transfer['hod_status'] == 'approved' && $transfer['admin_status'] == 'pending') {
-            $field = 'admin_approval';
-            $statusField = 'admin_status';
-        } elseif ($transfer['ceo_approval'] == $userId && $transfer['admin_status'] == 'approved' && $transfer['ceo_status'] == 'pending') {
-            $field = 'ceo_approval';
-            $statusField = 'ceo_status';
-        } else {
-            return redirect()->back()->with('error', 'You are not authorized to approve this request or it is not your turn.');
-        }
-if ($action === 'approve') {
-    // Approve current step
-    $data = [$statusField => 'approved'];
-
-    // If HOD is approving, save timestamp
-    if ($statusField === 'hod_status') {
-        $data['hod_approval_date'] = date('Y-m-d H:i:s');
+    if (!$transfer) {
+        return redirect()->back()->with('error', 'Transfer not found.');
     }
 
-    $transferModel->update($id, $data);
+    $field = null;
+    $statusField = null;
 
-    return redirect()->back()->with('success', 'Approved successfully.');
+    // Determine which approval step the user can act on
+    if ($transfer['hod_approval'] == $userId && $transfer['hod_status'] == 'pending') {
+        $field = 'hod_approval';
+        $statusField = 'hod_status';
+    } elseif ($transfer['admin_approval'] == $userId && $transfer['hod_status'] == 'approved' && $transfer['admin_status'] == 'pending') {
+        $field = 'admin_approval';
+        $statusField = 'admin_status';
+    } elseif ($transfer['ceo_approval'] == $userId && $transfer['admin_status'] == 'approved' && $transfer['ceo_status'] == 'pending') {
+        $field = 'ceo_approval';
+        $statusField = 'ceo_status';
+    } else {
+        return redirect()->back()->with('error', 'You are not authorized to approve this request or it is not your turn.');
+    }
+
+    if ($action === 'approve') {
+        // Approve current step
+        $data = [$statusField => 'approved'];
+
+        if ($statusField === 'hod_status') {
+            $data['hod_approval_date'] = date('Y-m-d H:i:s');
+        }
+
+        $transferModel->update($id, $data);
+
+        /**
+         * 🔹 Send email to the NEXT approver
+         */
+        $email = \Config\Services::email();
+        $nextApprover = null;
+
+        if ($statusField === 'hod_status' && $transfer['admin_approval']) {
+            $nextApprover = $userModel->find($transfer['admin_approval']);
+        } elseif ($statusField === 'admin_status' && $transfer['ceo_approval']) {
+            $nextApprover = $userModel->find($transfer['ceo_approval']);
+        }
+
+        if ($nextApprover && !empty($nextApprover['email'])) {
+            $fromDept = $deptModel->find($transfer['from_location']);
+            $toDept   = $deptModel->find($transfer['to_location']);
+
+            $email->setTo($nextApprover['email']);
+            $email->setSubject('Asset Transfer Request Pending Your Approval');
+            $email->setMessage("
+                Dear {$nextApprover['username']},<br><br>
+                An asset transfer request is now pending your approval.<br><br>
+                <b>Asset ID:</b> {$transfer['asset_id']}<br>
+                <b>From Department:</b> {$fromDept['name']}<br>
+                <b>To Department:</b> {$toDept['name']}<br>
+                <b>Reason:</b> {$transfer['reason_for_transfer']}<br><br>
+                Please log in to the system to review and take action.<br><br>
+                Thank you.
+            ");
+            if (!$email->send()) {
+                log_message('error', 'Approval email failed: ' . print_r($email->printDebugger(), true));
+            }
+        }
+
+        return redirect()->back()->with('success', 'Approved successfully.');
+    }
 }
 
-    }
 
     public function approvals()
 {
@@ -343,6 +369,44 @@ public function receiveAsset($id)
 
     return redirect()->back()->with('success', 'Asset marked as received successfully.');
 }
+
+private function sendApprovalEmail($approverId, $transferId, $role)
+{
+    $userModel     = new UserModel();
+    $transferModel = new AssetTransferModel();
+    $deptModel     = new DepartmentModel();
+
+    $approver = $userModel->find($approverId);
+    $transfer = $transferModel->getTransferWithDetails($transferId);
+
+    if (!$approver || empty($approver['email'])) {
+        return;
+    }
+
+    $tokenField = "approval_token_{$role}";
+    $token = bin2hex(random_bytes(16));
+    $transferModel->update($transferId, [$tokenField => $token]);
+
+    $approveUrl = base_url("asset-transfer/email-approve/{$transferId}/{$approver['id']}/{$token}");
+    $rejectUrl  = base_url("asset-transfer/email-reject/{$transferId}/{$approver['id']}/{$token}");
+
+    $email = \Config\Services::email();
+    $email->setTo($approver['email']);
+    $email->setSubject('Asset Transfer Request Pending Your Approval');
+    $email->setMessage("
+        Dear {$approver['username']},<br><br>
+        An asset transfer request is now pending your approval.<br><br>
+        <b>Asset:</b> {$transfer['asset_code']} ({$transfer['asset_name']})<br>
+        <b>From:</b> {$transfer['from_location_name']}<br>
+        <b>To:</b> {$transfer['to_location_name']}<br>
+        <b>Reason:</b> {$transfer['reason_for_transfer']}<br><br>
+        <a href='{$approveUrl}' style='padding:10px 15px;background:green;color:white;text-decoration:none;border-radius:5px;'>✅ Approve</a>
+        &nbsp;&nbsp;
+        <a href='{$rejectUrl}' style='padding:10px 15px;background:red;color:white;text-decoration:none;border-radius:5px;'>❌ Reject</a>
+    ");
+    $email->send();
+}
+
 
 public function downloadTransferNote($id)
 {

@@ -85,6 +85,8 @@ $routes->post('asset-transfer/approve/(:num)', 'AssetTransferController::approve
 $routes->get('/assets/asset-transfer/received', 'AssetTransferController::received');
 $routes->post('asset-transfer/receiveAsset/(:num)', 'AssetTransferController::receiveAsset/$1');
 $routes->get('/asset-transfer/downloadTransferNote/(:num)', 'AssetTransferController::downloadTransferNote/$1');
+$routes->get('asset-transfer/email-approve/(:num)/(:num)/(:any)', 'AssetTransferController::emailApprove/$1/$2/$3');
+$routes->get('asset-transfer/email-reject/(:num)/(:num)/(:any)', 'AssetTransferController::emailReject/$1/$2/$3');
 
 
 
