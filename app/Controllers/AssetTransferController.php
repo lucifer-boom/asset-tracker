@@ -138,11 +138,12 @@ class AssetTransferController extends Controller
     $transferModel = new \App\Models\AssetTransferModel();
     $assetModel = new \App\Models\AssetModel();
     $deptModel  = new \App\Models\DepartmentModel();
+    $userModel  = new \App\Models\UserModel();
 
     // --- Pending Transfers ---
     $pendingTransfers = $transferModel->getPendingForUser($userId);
 
-    // Add asset and department details
+    // Add asset, department, and approval date details
     foreach ($pendingTransfers as &$transfer) {
         $asset = $assetModel->find($transfer['asset_id']);
         $transfer['asset_name'] = $asset['asset_code'] ?? '';
@@ -152,6 +153,15 @@ class AssetTransferController extends Controller
 
         $toDept = $deptModel->find($transfer['to_location']);
         $transfer['to_name'] = $toDept['name'] ?? '';
+
+        // Add approval users and dates
+        $transfer['hod_user']   = $userModel->find($transfer['hod_approval'])['username'] ?? 'N/A';
+        $transfer['admin_user'] = $userModel->find($transfer['admin_approval'])['username'] ?? 'N/A';
+        $transfer['ceo_user']   = $transfer['ceo_approval'] ? $userModel->find($transfer['ceo_approval'])['username'] : 'N/A';
+
+        $transfer['hod_date']   = $transfer['hod_approval_date'] ?? 'Pending';
+        $transfer['admin_date'] = $transfer['admin_approval_date'] ?? 'Pending';
+        $transfer['ceo_date']   = $transfer['ceo_approval_date'] ?? 'Pending';
     }
 
     // --- Past Transfers (approved/rejected by this user) ---
@@ -170,7 +180,7 @@ class AssetTransferController extends Controller
 
     $pastTransfers = $builder->get()->getResultArray();
 
-    // Add asset and department details for past transfers
+    // Add asset, department, and approval date details for past transfers
     foreach ($pastTransfers as &$transfer) {
         $asset = $assetModel->find($transfer['asset_id']);
         $transfer['asset_name'] = $asset['asset_code'] ?? '';
@@ -180,6 +190,15 @@ class AssetTransferController extends Controller
 
         $toDept = $deptModel->find($transfer['to_location']);
         $transfer['to_name'] = $toDept['name'] ?? '';
+
+        // Add approval users and dates
+        $transfer['hod_user']   = $userModel->find($transfer['hod_approval'])['username'] ?? 'N/A';
+        $transfer['admin_user'] = $userModel->find($transfer['admin_approval'])['username'] ?? 'N/A';
+        $transfer['ceo_user']   = $transfer['ceo_approval'] ? $userModel->find($transfer['ceo_approval'])['username'] : 'N/A';
+
+        $transfer['hod_date']   = $transfer['hod_approval_date'] ?? 'Pending';
+        $transfer['admin_date'] = $transfer['admin_approval_date'] ?? 'Pending';
+        $transfer['ceo_date']   = $transfer['ceo_approval_date'] ?? 'Pending';
     }
 
     echo view('includes/sidebar');
@@ -192,11 +211,10 @@ class AssetTransferController extends Controller
 }
 
 
-
     /**
      * Approve or reject transfer
      */
-    public function approve($id)
+ public function approve($id)
 {
     $action = $this->request->getPost('action');
     $userId = session()->get('user_id');
@@ -217,10 +235,10 @@ class AssetTransferController extends Controller
     if ($transfer['hod_approval'] == $userId && $transfer['hod_status'] == 'pending') {
         $field = 'hod_approval';
         $statusField = 'hod_status';
-    } elseif ($transfer['admin_approval'] == $userId && $transfer['hod_status'] == 'approved' && $transfer['admin_status'] == 'pending') {
+    } elseif ($transfer['admin_approval'] == $userId && $transfer['hod_status'] === 'approved' && $transfer['admin_status'] === 'pending') {
         $field = 'admin_approval';
         $statusField = 'admin_status';
-    } elseif ($transfer['ceo_approval'] == $userId && $transfer['admin_status'] == 'approved' && $transfer['ceo_status'] == 'pending') {
+    } elseif ($transfer['ceo_approval'] == $userId && $transfer['admin_status'] === 'approved' && $transfer['ceo_status'] === 'pending') {
         $field = 'ceo_approval';
         $statusField = 'ceo_status';
     } else {
@@ -228,18 +246,22 @@ class AssetTransferController extends Controller
     }
 
     if ($action === 'approve') {
-        // Approve current step
+        $currentDateTime = date('Y-m-d H:i:s');
+
+        // Approve current step and save timestamp
         $data = [$statusField => 'approved'];
 
         if ($statusField === 'hod_status') {
-            $data['hod_approval_date'] = date('Y-m-d H:i:s');
+            $data['hod_approval_date'] = $currentDateTime;
+        } elseif ($statusField === 'admin_status') {
+            $data['admin_approval_date'] = $currentDateTime;
+        } elseif ($statusField === 'ceo_status') {
+            $data['ceo_approval_date'] = $currentDateTime;
         }
 
         $transferModel->update($id, $data);
 
-        /**
-         * 🔹 Send email to the NEXT approver
-         */
+        // Send email to next approver if exists
         $email = \Config\Services::email();
         $nextApprover = null;
 
@@ -253,6 +275,7 @@ class AssetTransferController extends Controller
             $fromDept = $deptModel->find($transfer['from_location']);
             $toDept   = $deptModel->find($transfer['to_location']);
 
+            $email->clear();
             $email->setTo($nextApprover['email']);
             $email->setSubject('Asset Transfer Request Pending Your Approval');
             $email->setMessage("
@@ -270,9 +293,64 @@ class AssetTransferController extends Controller
             }
         }
 
+        // If all approvals done, notify custodian
+        $updatedTransfer = $transferModel->find($id);
+        $allApproved = (
+            ($updatedTransfer['hod_status'] === 'approved') &&
+            ($updatedTransfer['admin_status'] === 'approved') &&
+            (
+                ($updatedTransfer['ceo_approval'] === null) || 
+                ($updatedTransfer['ceo_status'] === 'approved')
+            )
+        );
+
+        if ($allApproved) {
+            $custodian = $userModel->find($updatedTransfer['asset_custodian']);
+            if ($custodian && !empty($custodian['email'])) {
+                $hodUser   = $userModel->find($updatedTransfer['hod_approval']);
+                $adminUser = $userModel->find($updatedTransfer['admin_approval']);
+                $ceoUser   = $updatedTransfer['ceo_approval'] ? $userModel->find($updatedTransfer['ceo_approval']) : null;
+
+                $hodDate   = $updatedTransfer['hod_approval_date'] ?? 'Not set';
+                $adminDate = $updatedTransfer['admin_approval_date'] ?? 'Not set';
+                $ceoDate   = $updatedTransfer['ceo_approval_date'] ?? 'Not set';
+
+                $approvalSummary = "
+                    <b>Approval Summary:</b><br>
+                    HOD ({$hodUser['username']}) - {$hodDate}<br>
+                    Admin ({$adminUser['username']}) - {$adminDate}<br>
+                ";
+                if ($ceoUser) {
+                    $approvalSummary .= "CEO ({$ceoUser['username']}) - {$ceoDate}<br>";
+                }
+
+                $fromDept = $deptModel->find($updatedTransfer['from_location']);
+                $toDept   = $deptModel->find($updatedTransfer['to_location']);
+
+                $email->clear();
+                $email->setTo($custodian['email']);
+                $email->setSubject('Your Asset Transfer Has Been Approved');
+                $email->setMessage("
+                    Dear {$custodian['username']},<br><br>
+                    Your asset transfer request has been <b>approved by all required approvers</b>.<br><br>
+                    <b>Asset ID:</b> {$updatedTransfer['asset_id']}<br>
+                    <b>From Department:</b> {$fromDept['name']}<br>
+                    <b>To Department:</b> {$toDept['name']}<br>
+                    <b>Reason:</b> {$updatedTransfer['reason_for_transfer']}<br><br>
+                    {$approvalSummary}<br>
+                    Thank you.
+                ");
+                if (!$email->send()) {
+                    log_message('error', 'Final custodian email failed: ' . print_r($email->printDebugger(), true));
+                }
+            }
+        }
+
         return redirect()->back()->with('success', 'Approved successfully.');
     }
 }
+
+
 
 
     public function approvals()

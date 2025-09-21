@@ -61,6 +61,10 @@
                             <th>Reason</th>
                             <th>HOD Approval Status</th>
                             <th>HOD Approval Date</th>
+                            <th>Admin Approval Status</th>
+                            <th>Admin Approval Date</th>
+                            <th>CEO Approval Status</th>
+                            <th>CEO Approval Date</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -72,22 +76,60 @@
                                 <td><?= esc($transfer['reason_for_transfer']) ?></td>
 
                                 <!-- HOD Approval Status -->
-                                <td>
-                                    <?php
-                                    if ($transfer['hod_status'] === 'approved') {
-                                        echo '<span class="badge bg-success">Approved</span>';
-                                    } elseif ($transfer['hod_status'] === 'rejected') {
-                                        echo '<span class="badge bg-danger">Rejected</span>';
-                                    } else {
-                                        echo '<span class="badge bg-warning text-dark">Pending</span>';
-                                    }
-                                    ?>
-                                </td>
+                               <!-- HOD Approval Status -->
+<td>
+    <?php
+    if ($transfer['hod_status'] === 'approved') {
+        echo '<span class="badge bg-success">Approved</span>';
+    } elseif ($transfer['hod_status'] === 'rejected') {
+        echo '<span class="badge bg-danger">Rejected</span>';
+    } else {
+        echo '<span class="badge bg-warning text-dark">Pending</span>';
+    }
+    ?>
+</td>
 
-                                <!-- HOD Approval Date -->
-                                <td>
+<!-- HOD Approval Date -->
+<td>
     <?= !empty($transfer['hod_approval_date']) ? esc($transfer['hod_approval_date']) : 'Pending' ?>
 </td>
+
+<!-- Admin Approval Status -->
+<td>
+    <?php
+    if ($transfer['admin_status'] === 'approved') {
+        echo '<span class="badge bg-success">Approved</span>';
+    } elseif ($transfer['admin_status'] === 'rejected') {
+        echo '<span class="badge bg-danger">Rejected</span>';
+    } else {
+        echo '<span class="badge bg-warning text-dark">Pending</span>';
+    }
+    ?>
+</td>
+
+<!-- Admin Approval Date -->
+<td>
+    <?= !empty($transfer['admin_approval_date']) ? esc($transfer['admin_approval_date']) : 'Pending' ?>
+</td>
+
+<!-- CEO Approval Status -->
+<td>
+    <?php
+    if ($transfer['ceo_status'] === 'approved') {
+        echo '<span class="badge bg-success">Approved</span>';
+    } elseif ($transfer['ceo_status'] === 'rejected') {
+        echo '<span class="badge bg-danger">Rejected</span>';
+    } else {
+        echo '<span class="badge bg-warning text-dark">Pending</span>';
+    }
+    ?>
+</td>
+
+<!-- CEO Approval Date -->
+<td>
+    <?= !empty($transfer['ceo_approval_date']) ? esc($transfer['ceo_approval_date']) : 'Pending' ?>
+</td>
+
 
                             </tr>
                         <?php endforeach; ?>
