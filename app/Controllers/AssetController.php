@@ -185,47 +185,47 @@ public function store()
 
     // Generate QR Code for a specific asset
     public function generateQRCode($assetId)
-{
-    $assetModel = new AssetModel();
+    {
+        $assetModel = new AssetModel();
 
-    // Fetch asset with model name
-    $asset = $assetModel
-        ->select('assets.*, asset_models.name as model_name')
-        ->join('asset_models', 'asset_models.id = assets.model_id')
-        ->where('assets.id', $assetId)
-        ->first();
+        // Fetch asset with model name
+        $asset = $assetModel
+            ->select('assets.*, asset_models.name as model_name')
+            ->join('asset_models', 'asset_models.id = assets.model_id')
+            ->where('assets.id', $assetId)
+            ->first();
 
-    if (!$asset) {
-        return 'Asset not found!';
+        if (!$asset) {
+            return 'Asset not found!';
+        }
+
+        // Make folder if missing
+        $folder = WRITEPATH . 'qrcodes/';
+        if (!is_dir($folder)) {
+            mkdir($folder, 0777, true);
+        }
+
+        // Content for QR (using model_name)
+        $qrContent = "Asset ID: {$asset['id']}\nModel: {$asset['model_name']}\nCode: {$asset['asset_code']}";
+
+        // Build QR Code
+        $result = Builder::create()
+            ->writer(new PngWriter())
+            ->data($qrContent)
+            ->encoding(new Encoding('UTF-8'))
+            ->errorCorrectionLevel(new ErrorCorrectionLevelHigh())
+            ->size(300)
+            ->margin(10)
+            ->build();
+
+        // Save QR to file
+        $fileName = $folder . 'asset_' . $asset['id'] . '.png';
+        $result->saveToFile($fileName);
+
+        // Return as image response
+        return $this->response->setHeader('Content-Type', $result->getMimeType())
+            ->setBody($result->getString());
     }
-
-    // Make folder if missing
-    $folder = WRITEPATH . 'qrcodes/';
-    if (!is_dir($folder)) {
-        mkdir($folder, 0777, true);
-    }
-
-    // ✅ Encode full URL in QR Code instead of plain text
-    $qrContent = site_url("assets/view/{$asset['id']}");
-
-    // Build QR Code
-    $result = Builder::create()
-        ->writer(new PngWriter())
-        ->data($qrContent)
-        ->encoding(new Encoding('UTF-8'))
-        ->errorCorrectionLevel(new ErrorCorrectionLevelHigh())
-        ->size(300)
-        ->margin(10)
-        ->build();
-
-    // Save QR to file
-    $fileName = $folder . 'asset_' . $asset['id'] . '.png';
-    $result->saveToFile($fileName);
-
-    // Return as image response
-    return $this->response->setHeader('Content-Type', $result->getMimeType())
-        ->setBody($result->getString());
-}
 
     public function qrScan()
     {
@@ -233,24 +233,26 @@ public function store()
     }
 
     // Return asset details as JSON
-   public function view($assetId)
-{
-    $assetModel = new \App\Models\AssetModel();
+    public function view($assetId)
+    {
+        // Make sure to instantiate the model
+        $assetModel = new \App\Models\AssetModel();
 
-    // ✅ Use correct table name: asset_models instead of models
-    $asset = $assetModel
-        ->select('assets.*, asset_models.name as model_name, asset_categories.name as category_name, suppliers.name as supplier_name')
-        ->join('asset_models', 'asset_models.id = assets.model_id')
-        ->join('asset_categories', 'asset_categories.id = assets.category_id')
-        ->join('suppliers', 'suppliers.id = assets.supplier_id', 'left')
-        ->find($assetId);
+        $asset = $assetModel
+            ->select('assets.*, models.name as model_name, asset_categories.name as category_name, suppliers.name as supplier_name')
+            ->join('models', 'models.id = assets.model_id')
+            ->join('asset_categories', 'asset_categories.id = assets.category_id')
+            ->join('suppliers', 'suppliers.id = assets.supplier_id', 'left')
+            ->find($assetId);
 
-    if (!$asset) {
-        return $this->response->setStatusCode(404)->setJSON(['error' => 'Asset not found!']);
+        if (!$asset) {
+            return $this->response->setStatusCode(404)->setBody('Asset not found!');
+        }
+
+        return $this->response->setContentType('application/json')
+            ->setBody(json_encode($asset));
     }
 
-    return $this->response->setJSON($asset);
-}
     public function generateSticker($assetId)
     {
         $assetModel = new AssetModel();

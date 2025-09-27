@@ -100,7 +100,13 @@ $routes->get('/assets/sticker/(:num)', 'AssetController::generateSticker/$1');
 $routes->get('/assets/downloadSticker/(:num)', 'AssetController::downloadSticker/$1');
 
 
-
+// Show all licenses
+$routes->get('/licenses', 'LicenseController::index');
+$routes->get('license/licenses/create', 'LicenseController::create');
+$routes->post('licenses/licenses/store', 'LicenseController::store');
+$routes->get('licenses/licenses/edit/(:num)', 'LicenseController::edit/$1');
+$routes->post('licenses/licenses/update/(:num)', 'LicenseController::update/$1');
+$routes->get('licenses/licenses/delete/(:num)', 'LicenseController::delete/$1',  ['filters' => 'admin']);
 
 //user dashboard department
 $routes->get('user-dashboard/user-assigned', 'UserDashboard::user_assigned');
