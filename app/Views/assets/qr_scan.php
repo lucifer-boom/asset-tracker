@@ -9,38 +9,126 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
 <!-- PWA Manifest -->
-<link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#00d9ffff">
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#007bff">
 
 <style>
-body { background: #f8f9fa; font-family: Arial,sans-serif; padding: 20px; }
-.scanner-container { display: flex; justify-content: center; margin-bottom: 20px; }
-#reader { width: 100%; max-width: 350px; border: 2px dashed #6c757d; border-radius: 12px; padding: 10px; background: #fff; transition: 0.3s all; }
-#reader.loading { border-color: #007bff; box-shadow: 0 0 10px rgba(0,123,255,0.5); }
-#loadingSpinner { max-width: 600px; margin: 0 auto 20px auto; }
-.asset-info { max-width: 600px; margin: 0 auto; background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 20px; display: none; }
-.asset-info h3 { margin-bottom: 20px; color: #007bff; text-align: center; }
-.asset-info .row { margin-bottom: 10px; }
-.asset-info .label { font-weight: bold; color: #495057; }
-.asset-info .value { color: #212529; }
-.alert { max-width: 600px; margin: 10px auto; display: none; }
+/* Body and Layout */
+body {
+    background: #f4f6f9;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    padding: 30px 20px;
+}
+
+h1 {
+    text-align: center;
+    color: #007bff;
+    margin-bottom: 30px;
+    font-weight: 600;
+}
+
+/* Scanner Box */
+.scanner-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 30px;
+}
+
+#reader {
+    width: 100%;
+    max-width: 380px;
+    border: 2px dashed #6c757d;
+    border-radius: 15px;
+    padding: 15px;
+    background: #fff;
+    transition: all 0.3s ease;
+    box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+}
+#reader.loading {
+    border-color: #007bff;
+    box-shadow: 0 0 20px rgba(0,123,255,0.3);
+}
+
+/* Loading Spinner */
+#loadingSpinner {
+    max-width: 600px;
+    margin: 20px auto;
+    text-align: center;
+}
+
+/* Error Alert */
+.alert {
+    max-width: 600px;
+    margin: 10px auto 20px auto;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* Asset Details Card */
+.asset-info {
+    max-width: 650px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 15px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+    padding: 25px 30px;
+    display: none;
+    transition: all 0.3s ease;
+}
+
+.asset-info h3 {
+    margin-bottom: 25px;
+    color: #007bff;
+    text-align: center;
+    font-weight: 600;
+}
+
+.asset-info .row {
+    margin-bottom: 12px;
+}
+
+.asset-info .label {
+    font-weight: 600;
+    color: #495057;
+}
+
+.asset-info .value {
+    color: #212529;
+    font-weight: 500;
+}
+
+/* Responsive tweaks */
+@media (max-width: 576px) {
+    .asset-info {
+        padding: 20px 15px;
+    }
+    #reader {
+        max-width: 100%;
+    }
+}
 </style>
 </head>
 <body>
 
+<h1>Asset QR Scanner</h1>
+
+<!-- QR Scanner -->
 <div class="scanner-container">
     <div id="reader"></div>
 </div>
 
+<!-- Loading Spinner -->
 <div class="text-center my-3" id="loadingSpinner" style="display:none;">
     <div class="spinner-border text-primary" role="status">
         <span class="visually-hidden">Loading...</span>
     </div>
-    <div>Fetching asset details...</div>
+    <div class="mt-2 fw-medium">Fetching asset details...</div>
 </div>
 
+<!-- Error Message -->
 <div class="alert alert-danger" id="errorAlert"></div>
 
+<!-- Asset Details Card -->
 <div class="asset-info" id="assetDetails">
     <h3>Asset Details</h3>
     <div class="row"><span class="label col-5">Asset ID:</span><span class="value col-7" id="assetId"></span></div>
@@ -53,7 +141,7 @@ body { background: #f8f9fa; font-family: Arial,sans-serif; padding: 20px; }
     <div class="row"><span class="label col-5">Value:</span><span class="value col-7" id="value"></span></div>
 </div>
 
-<!-- HTML5 QR Code -->
+<!-- HTML5 QR Code Library -->
 <script src="https://unpkg.com/html5-qrcode"></script>
 <script>
 const readerElement = document.getElementById('reader');
@@ -111,7 +199,7 @@ html5QrCode.start(
 
 // Register service worker
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/service-worker.js')
+    navigator.serviceWorker.register('./service-worker.js')
         .then(() => console.log('Service Worker registered'));
 }
 </script>
