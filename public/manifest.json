@@ -1,10 +1,9 @@
 {
-    "name": "Asset Tracker QR Scanner",
-    "short_name": "Asset QR",
-    "description": "Scan and view asset details",
-    "start_url": "/assets/scan",
+    "name": "Asset QR Scanner",
+    "short_name": "QR Scanner",
+    "start_url": "/assets/qrScan",
     "display": "standalone",
-    "background_color": "#f0f2f5",
+    "background_color": "#f8f9fa",
     "theme_color": "#007bff",
     "icons": [{
             "src": "/assets/icons/icon-192.png",
