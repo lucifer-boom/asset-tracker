@@ -10,7 +10,7 @@
 
 <!-- PWA Manifest -->
 <link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#007bff">
+<meta name="theme-color" content="#00d9ffff">
 
 <style>
 body { background: #f8f9fa; font-family: Arial,sans-serif; padding: 20px; }
