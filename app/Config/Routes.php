@@ -72,11 +72,6 @@ $routes->get('/assets/assignments', 'AssetAssignmentController::index');
 $routes->post('/assets/assignments/store', 'AssetAssignmentController::store');
 $routes->post('/assets/assignments/return', 'AssetAssignmentController::return');
 
-//Asset Transfers & Disposals
-$routes->get('/assets/movements', 'AssetMovementController::index');
-$routes->post('/assets/movements/transfer', 'AssetMovementController::storeTransfer');
-$routes->post('/assets/movements/dispose', 'AssetMovementController::storeDisposal');
-
 //Asset Tranfers
 $routes->get('/assets/assets_transfers', 'AssetTransferController::create');
 $routes->post('/asset-transfer/store', 'AssetTransferController::store');
@@ -87,6 +82,8 @@ $routes->post('asset-transfer/receiveAsset/(:num)', 'AssetTransferController::re
 $routes->get('/asset-transfer/downloadTransferNote/(:num)', 'AssetTransferController::downloadTransferNote/$1');
 $routes->get('assets/transfer/approve/(:num)/(:any)', '\App\Controllers\AssetTransferController::emailApprove/$1/$2');
 $routes->get('assets/transfer/reject/(:num)/(:any)', '\App\Controllers\AssetTransferController::emailReject/$1/$2');
+$routes->get('assets/transfer/receiveAsset/(:num)/(:any)', 'AssetTransferController::receiveAsset/$1/$2');
+
 
 
 
