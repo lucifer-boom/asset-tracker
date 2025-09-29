@@ -1,17 +1,17 @@
 {
     "name": "Asset QR Scanner",
     "short_name": "QR Scanner",
-    "start_url": "/assets/qrScan",
+    "start_url": "/assets/qr-scanner",
     "display": "standalone",
-    "background_color": "#f8f9fa",
-    "theme_color": "#007bff",
+    "background_color": "#4361ee",
+    "theme_color": "#4361ee",
     "icons": [{
-            "src": "/assets/icons/icon-192.png",
+            "src": "/icons/icon-192.png",
             "sizes": "192x192",
             "type": "image/png"
         },
         {
-            "src": "/assets/icons/icon-512.png",
+            "src": "/icons/icon-512.png",
             "sizes": "512x512",
             "type": "image/png"
         }
