@@ -265,7 +265,7 @@ class AssetTransferController extends Controller
         $data[$dateField] = $currentDateTime;
     }
 
-    // Preserve token
+    // Preserve approval token
     $data['approval_token'] = $transfer['approval_token'];
 
     $transferModel->update($id, $data);
@@ -308,69 +308,76 @@ class AssetTransferController extends Controller
     );
 
     if ($allApproved) {
-    $custodian = $userModel->find($updatedTransfer['asset_custodian']);
-    $toDept    = $deptModel->find($updatedTransfer['to_location']);
-    $fromDept  = $deptModel->find($updatedTransfer['from_location']);
-    $toHod     = $userModel->getHodByDepartment($updatedTransfer['to_location']); // HOD of receiving department
+        $custodian = $userModel->find($updatedTransfer['asset_custodian']);
+        $toDept    = $deptModel->find($updatedTransfer['to_location']);
+        $fromDept  = $deptModel->find($updatedTransfer['from_location']);
+        $toHod     = $userModel->getHodByDepartment($updatedTransfer['to_location']); // HOD of receiving department
 
-    // Prepare approval summary
-    $hodUser   = $userModel->find($updatedTransfer['hod_approval']);
-    $adminUser = $userModel->find($updatedTransfer['admin_approval']);
-    $ceoUser   = $updatedTransfer['ceo_approval'] ? $userModel->find($updatedTransfer['ceo_approval']) : null;
+        // --- Generate receive token if not exists ---
+        if (empty($updatedTransfer['receive_token'])) {
+            $receiveToken = bin2hex(random_bytes(16)); // 32-character token
+            $transferModel->update($id, ['receive_token' => $receiveToken]);
+            $updatedTransfer = $transferModel->find($id); // reload with token
+        }
 
-    $hodDate   = $updatedTransfer['hod_approval_date'] ?? 'Not set';
-    $adminDate = $updatedTransfer['admin_approval_date'] ?? 'Not set';
-    $ceoDate   = $updatedTransfer['ceo_approval_date'] ?? 'Not set';
+        $receiveLink = base_url("assets/transfer/receiveAsset/{$updatedTransfer['id']}/{$updatedTransfer['receive_token']}");
 
-    $approvalSummary = "
-        <b>Approval Summary:</b><br>
-        HOD ({$hodUser['username']}) - {$hodDate}<br>
-        Admin ({$adminUser['username']}) - {$adminDate}<br>
-    ";
-    if ($ceoUser) {
-        $approvalSummary .= "CEO ({$ceoUser['username']}) - {$ceoDate}<br>";
+        // Prepare approval summary
+        $hodUser   = $userModel->find($updatedTransfer['hod_approval']);
+        $adminUser = $userModel->find($updatedTransfer['admin_approval']);
+        $ceoUser   = $updatedTransfer['ceo_approval'] ? $userModel->find($updatedTransfer['ceo_approval']) : null;
+
+        $hodDate   = $updatedTransfer['hod_approval_date'] ?? 'Not set';
+        $adminDate = $updatedTransfer['admin_approval_date'] ?? 'Not set';
+        $ceoDate   = $updatedTransfer['ceo_approval_date'] ?? 'Not set';
+
+        $approvalSummary = "
+            <b>Approval Summary:</b><br>
+            HOD ({$hodUser['username']}) - {$hodDate}<br>
+            Admin ({$adminUser['username']}) - {$adminDate}<br>
+        ";
+        if ($ceoUser) {
+            $approvalSummary .= "CEO ({$ceoUser['username']}) - {$ceoDate}<br>";
+        }
+
+        // --- Email to Custodian ---
+        if ($custodian && !empty($custodian['email']) && filter_var($custodian['email'], FILTER_VALIDATE_EMAIL)) {
+            $email = \Config\Services::email();
+            $email->setTo($custodian['email']);
+            $email->setSubject('Your Asset Transfer Has Been Approved');
+            $email->setMessage("
+                Dear {$custodian['username']},<br><br>
+                Your asset transfer request has been <b>approved by all required approvers</b>.<br><br>
+                <b>Asset ID:</b> {$updatedTransfer['asset_id']}<br>
+                <b>From Department:</b> {$fromDept['name']}<br>
+                <b>To Department:</b> {$toDept['name']}<br>
+                <b>Reason:</b> {$updatedTransfer['reason_for_transfer']}<br><br>
+                {$approvalSummary}<br>
+                Thank you.
+            ");
+            $email->send();
+        }
+
+        // --- Email to Receiving Department HOD with "Mark as Received" button ---
+        if ($toHod && !empty($toHod['email']) && filter_var($toHod['email'], FILTER_VALIDATE_EMAIL)) {
+            $email = \Config\Services::email();
+            $email->setTo($toHod['email']);
+            $email->setSubject('Asset Transfer Received Notification');
+            $email->setMessage("
+                Dear {$toHod['username']},<br><br>
+                The asset <b>{$updatedTransfer['asset_id']}</b> has been transferred to your department (<b>{$toDept['name']}</b>).<br>
+                Please acknowledge receipt by clicking the button below:<br><br>
+                <a href='{$receiveLink}' style='padding:10px 15px; background:green; color:white; text-decoration:none;'>Mark as Received</a><br><br>
+                Thank you,<br>
+                <b>CA-Asset-Tracker</b>
+            ");
+            $email->send();
+        }
     }
-
-    // --- Email to Custodian ---
-    if ($custodian && !empty($custodian['email']) && filter_var($custodian['email'], FILTER_VALIDATE_EMAIL)) {
-        $email = \Config\Services::email();
-        $email->setTo($custodian['email']);
-        $email->setSubject('Your Asset Transfer Has Been Approved');
-        $email->setMessage("
-            Dear {$custodian['username']},<br><br>
-            Your asset transfer request has been <b>approved by all required approvers</b>.<br><br>
-            <b>Asset ID:</b> {$updatedTransfer['asset_id']}<br>
-            <b>From Department:</b> {$fromDept['name']}<br>
-            <b>To Department:</b> {$toDept['name']}<br>
-            <b>Reason:</b> {$updatedTransfer['reason_for_transfer']}<br><br>
-            {$approvalSummary}<br>
-            Thank you.
-        ");
-        $email->send();
-    }
-
-    // --- Email to Receiving Department HOD ---
-    if ($toHod && !empty($toHod['email']) && filter_var($toHod['email'], FILTER_VALIDATE_EMAIL)) {
-        $email = \Config\Services::email();
-        $email->setTo($toHod['email']);
-        $email->setSubject('Asset Received in Your Department');
-        $email->setMessage("
-            Dear {$toHod['username']},<br><br>
-            The asset <b>{$updatedTransfer['asset_id']}</b> has been transferred to your department (<b>{$toDept['name']}</b>).<br>
-            Please review and acknowledge in the system.<br><br>
-            <b>Asset ID:</b> {$updatedTransfer['asset_id']}<br>
-            <b>From Department:</b> {$fromDept['name']}<br>
-            <b>Reason:</b> {$updatedTransfer['reason_for_transfer']}<br><br>
-            {$approvalSummary}<br>
-            Thank you.
-        ");
-        $email->send();
-    }
-}
-
 
     return redirect()->back()->with('success', ucfirst($action) . 'd successfully.');
 }
+
 
     public function approvals()
 {
@@ -446,9 +453,8 @@ class AssetTransferController extends Controller
 
 
 
-public function receiveAsset($id)
+public function receiveAsset($id, $token = null)
 {
-    $userId = session()->get('user_id');
     $transferModel = new AssetTransferModel();
     $userModel     = new UserModel();
 
@@ -457,24 +463,28 @@ public function receiveAsset($id)
         return redirect()->back()->with('error', 'Transfer not found.');
     }
 
-    // Verify logged-in user is HOD of receiving dept
-    $hod = $userModel->getHodByDepartment($transfer['to_location']);
-    if (!$hod || $hod['id'] != $userId) {
-        return redirect()->back()->with('error', 'You are not authorized to mark this asset as received.');
+    // Verify token if user not logged in
+    if ($token) {
+        if ($transfer['receive_token'] !== $token) {
+            return redirect()->back()->with('error', 'Invalid or expired link.');
+        }
+    } else {
+        // Otherwise, verify logged-in HOD
+        $userId = session()->get('user_id');
+        $hod = $userModel->getHodByDepartment($transfer['to_location']);
+        if (!$hod || $hod['id'] != $userId) {
+            return redirect()->back()->with('error', 'You are not authorized to mark this asset as received.');
+        }
     }
 
+    // Mark as received
     $transferModel->update($id, [
-        'received_date' => date('Y-m-d'),
-        'received_by'   => $userId
+        'received_date' => date('Y-m-d H:i:s'),
+        'received_by'   => $transfer['to_hod_id'] ?? null
     ]);
 
-    $transferModel->update($id, [
-    'received_date' => date('Y-m-d'),
-    'received_by'   => $userId
-]);
+         return redirect()->to('/login')->with('success', 'Transfered Asset Received successfully.');
 
-
-    return redirect()->back()->with('success', 'Asset marked as received successfully.');
 }
 
 
@@ -549,7 +559,7 @@ public function emailApprove($id, $token)
     $transferModel->update($id, $data);
 
     // Send email to next approver if exists
-    if ($nextApprover && !empty($nextApprover['email'])) {
+    if ($nextApprover && !empty($nextApprover['email']) && filter_var($nextApprover['email'], FILTER_VALIDATE_EMAIL)) {
         $fromDept = $deptModel->find($transfer['from_location']);
         $toDept   = $deptModel->find($transfer['to_location']);
         $email = \Config\Services::email();
@@ -573,7 +583,7 @@ public function emailApprove($id, $token)
         $email->send();
     }
 
-    // Send final summary email to custodian if all approved
+    // Send final summary email if fully approved
     $updatedTransfer = $transferModel->find($id);
     $allApproved = (
         $updatedTransfer['hod_status'] === 'approved' &&
@@ -585,69 +595,75 @@ public function emailApprove($id, $token)
     );
 
     if ($allApproved) {
-    $custodian = $userModel->find($updatedTransfer['asset_custodian']);
-    $toDept    = $deptModel->find($updatedTransfer['to_location']);
-    $fromDept  = $deptModel->find($updatedTransfer['from_location']);
-    $toHod     = $userModel->getHodByDepartment($updatedTransfer['to_location']); // HOD of receiving department
+        $custodian = $userModel->find($updatedTransfer['asset_custodian']);
+        $toDept    = $deptModel->find($updatedTransfer['to_location']);
+        $fromDept  = $deptModel->find($updatedTransfer['from_location']);
+        $toHod     = $userModel->getHodByDepartment($updatedTransfer['to_location']); // HOD of receiving department
 
-    // Prepare approval summary
-    $hodUser   = $userModel->find($updatedTransfer['hod_approval']);
-    $adminUser = $userModel->find($updatedTransfer['admin_approval']);
-    $ceoUser   = $updatedTransfer['ceo_approval'] ? $userModel->find($updatedTransfer['ceo_approval']) : null;
+        // Generate receive_token if missing
+        if (empty($updatedTransfer['receive_token'])) {
+            $receiveToken = bin2hex(random_bytes(16));
+            $transferModel->update($id, ['receive_token' => $receiveToken]);
+            $updatedTransfer['receive_token'] = $receiveToken;
+        }
 
-    $hodDate   = $updatedTransfer['hod_approval_date'] ?? 'Not set';
-    $adminDate = $updatedTransfer['admin_approval_date'] ?? 'Not set';
-    $ceoDate   = $updatedTransfer['ceo_approval_date'] ?? 'Not set';
+        // Prepare approval summary
+        $hodUser   = $userModel->find($updatedTransfer['hod_approval']);
+        $adminUser = $userModel->find($updatedTransfer['admin_approval']);
+        $ceoUser   = $updatedTransfer['ceo_approval'] ? $userModel->find($updatedTransfer['ceo_approval']) : null;
 
-    $approvalSummary = "
-        <b>Approval Summary:</b><br>
-        HOD ({$hodUser['username']}) - {$hodDate}<br>
-        Admin ({$adminUser['username']}) - {$adminDate}<br>
-    ";
-    if ($ceoUser) {
-        $approvalSummary .= "CEO ({$ceoUser['username']}) - {$ceoDate}<br>";
+        $hodDate   = $updatedTransfer['hod_approval_date'] ?? 'Not set';
+        $adminDate = $updatedTransfer['admin_approval_date'] ?? 'Not set';
+        $ceoDate   = $updatedTransfer['ceo_approval_date'] ?? 'Not set';
+
+        $approvalSummary = "
+            <b>Approval Summary:</b><br>
+            HOD ({$hodUser['username']}) - {$hodDate}<br>
+            Admin ({$adminUser['username']}) - {$adminDate}<br>
+        ";
+        if ($ceoUser) {
+            $approvalSummary .= "CEO ({$ceoUser['username']}) - {$ceoDate}<br>";
+        }
+
+        // --- Email to Custodian ---
+        if ($custodian && !empty($custodian['email']) && filter_var($custodian['email'], FILTER_VALIDATE_EMAIL)) {
+            $email = \Config\Services::email();
+            $email->setTo($custodian['email']);
+            $email->setSubject('Your Asset Transfer Has Been Approved');
+            $email->setMessage("
+                Dear {$custodian['username']},<br><br>
+                Your asset transfer request has been <b>approved by all required approvers</b>.<br><br>
+                <b>Asset ID:</b> {$updatedTransfer['asset_id']}<br>
+                <b>From Department:</b> {$fromDept['name']}<br>
+                <b>To Department:</b> {$toDept['name']}<br>
+                <b>Reason:</b> {$updatedTransfer['reason_for_transfer']}<br><br>
+                {$approvalSummary}<br>
+                Thank you.
+            ");
+            $email->send();
+        }
+
+        // --- Email to Receiving Department HOD ---
+        if ($toHod && !empty($toHod['email']) && filter_var($toHod['email'], FILTER_VALIDATE_EMAIL)) {
+            $receiveLink = base_url("assets/transfer/receiveAsset/{$updatedTransfer['id']}/{$updatedTransfer['receive_token']}");
+            $email = \Config\Services::email();
+            $email->setTo($toHod['email']);
+            $email->setSubject('Asset Transfer Received Notification');
+            $email->setMessage("
+                Dear {$toHod['username']},<br><br>
+                The asset <b>{$updatedTransfer['asset_id']}</b> has been transferred to your department (<b>{$toDept['name']}</b>).<br>
+                Please acknowledge receipt by clicking the button below:<br><br>
+                <a href='{$receiveLink}' style='padding:10px 15px; background:green; color:white; text-decoration:none;'>Mark as Received</a><br><br>
+                Thank you,<br>
+                <b>CA-Asset-Tracker</b>
+            ");
+            $email->send();
+        }
     }
-
-    // --- Email to Custodian ---
-    if ($custodian && !empty($custodian['email']) && filter_var($custodian['email'], FILTER_VALIDATE_EMAIL)) {
-        $email = \Config\Services::email();
-        $email->setTo($custodian['email']);
-        $email->setSubject('Your Asset Transfer Has Been Approved');
-        $email->setMessage("
-            Dear {$custodian['username']},<br><br>
-            Your asset transfer request has been <b>approved by all required approvers</b>.<br><br>
-            <b>Asset ID:</b> {$updatedTransfer['asset_id']}<br>
-            <b>From Department:</b> {$fromDept['name']}<br>
-            <b>To Department:</b> {$toDept['name']}<br>
-            <b>Reason:</b> {$updatedTransfer['reason_for_transfer']}<br><br>
-            {$approvalSummary}<br>
-            Thank you.
-        ");
-        $email->send();
-    }
-
-    // --- Email to Receiving Department HOD ---
-    if ($toHod && !empty($toHod['email']) && filter_var($toHod['email'], FILTER_VALIDATE_EMAIL)) {
-        $email = \Config\Services::email();
-        $email->setTo($toHod['email']);
-        $email->setSubject('Asset Received in Your Department');
-        $email->setMessage("
-            Dear {$toHod['username']},<br><br>
-            The asset <b>{$updatedTransfer['asset_id']}</b> has been transferred to your department (<b>{$toDept['name']}</b>).<br>
-            Please review and acknowledge in the system.<br><br>
-            <b>Asset ID:</b> {$updatedTransfer['asset_id']}<br>
-            <b>From Department:</b> {$fromDept['name']}<br>
-            <b>Reason:</b> {$updatedTransfer['reason_for_transfer']}<br><br>
-            {$approvalSummary}<br>
-            Thank you.
-        ");
-        $email->send();
-    }
-}
-
 
     return redirect()->to('/login')->with('success', 'Transfer approved successfully.');
 }
+
 
 
 public function emailReject($id, $token)
