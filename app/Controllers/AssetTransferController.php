@@ -457,38 +457,60 @@ public function receiveAsset($id, $token = null)
 {
     $transferModel = new AssetTransferModel();
     $userModel     = new UserModel();
+    $deptModel     = new DepartmentModel();
 
+    // Find transfer
     $transfer = $transferModel->find($id);
     if (!$transfer) {
         return redirect()->back()->with('error', 'Transfer not found.');
     }
 
-    // Verify token if user not logged in
-    if ($token) {
-        if ($transfer['receive_token'] !== $token) {
-            return redirect()->back()->with('error', 'Invalid or expired link.');
-        }
-    } else {
-        // Otherwise, verify logged-in HOD
-        $userId = session()->get('user_id');
-        $hod = $userModel->getHodByDepartment($transfer['to_location']);
-        if (!$hod || $hod['id'] != $userId) {
-            return redirect()->back()->with('error', 'You are not authorized to mark this asset as received.');
-        }
+    // If token is required, verify it
+    if ($token && $transfer['receive_token'] !== $token) {
+        return redirect()->back()->with('error', 'Invalid or expired receive link.');
+    }
+
+    // Get HOD of receiving department
+    $hod = $userModel->getHodByDepartment($transfer['to_location']);
+    if (!$hod) {
+        return redirect()->back()->with('error', 'Receiving HOD not found.');
+    }
+
+    // If HOD is required to be logged in
+    $userId = session()->get('user_id');
+    if ($userId && $userId != $hod['id']) {
+        return redirect()->back()->with('error', 'You are not authorized to mark this asset as received.');
     }
 
     // Mark as received
     $transferModel->update($id, [
         'received_date' => date('Y-m-d H:i:s'),
-        'received_by'   => $transfer['to_hod_id'] ?? null
+        'received_by'   => $hod['id']
     ]);
 
-         return redirect()->to('/login')->with('success', 'Transfered Asset Received successfully.');
+    // Send email to asset custodian
+    $custodian = $userModel->find($transfer['asset_custodian']);
+    $toDept    = $deptModel->find($transfer['to_location']);
+    $fromDept  = $deptModel->find($transfer['from_location']);
 
+    if ($custodian && !empty($custodian['email']) && filter_var($custodian['email'], FILTER_VALIDATE_EMAIL)) {
+        $email = \Config\Services::email();
+        $email->setTo($custodian['email']);
+        $email->setSubject('Asset Received by Receiving Department');
+        $email->setMessage("
+            Dear {$custodian['username']},<br><br>
+            The asset <b>{$transfer['asset_id']}</b> has been <b>received by the HOD</b> of the receiving department (<b>{$toDept['name']}</b>).<br>
+            <b>From Department:</b> {$fromDept['name']}<br>
+            <b>Received Date:</b> " . date('Y-m-d H:i:s') . "<br><br>
+            Thank you,<br>
+            <b>CA-Asset-Tracker</b>
+        ");
+        $email->send();
+    }
+
+    return redirect()->back()->with('success', 'Asset marked as received and custodian notified.');
 }
-
-
-
+    
 public function downloadTransferNote($id)
 {
     $transferModel = new \App\Models\AssetTransferModel();
