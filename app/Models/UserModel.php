@@ -19,16 +19,16 @@ class UserModel extends Model
                     ->findAll();
     }
 
-    public function getHodByDepartment($departmentId)
+   public function getHodByDepartment($departmentId)
 {
-    return $this->select('users.id, users.username')
+    return $this->select('users.id, users.username, users.email')
                 ->join('user_roles', 'users.id = user_roles.user_id')
                 ->join('roles', 'user_roles.role_id = roles.id')
                 ->where('users.department_id', $departmentId)
                 ->where('roles.name', 'hod')
                 ->where('roles.type', 'department')
                 ->get()
-                ->getRowArray(); // return first HOD found
+                ->getRowArray(); // return the first HOD found
 }
 
 }
