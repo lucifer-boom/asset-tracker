@@ -2,11 +2,11 @@
 
 namespace App\Controllers;
 
-use App\Models\ModelModel;     // model for asset_models
-use App\Models\CategoryModel;  // to fetch categories
-use App\Models\SubCategoryModel;  // to fetch sub categories
+use App\Models\ModelModel;
+use App\Models\CategoryModel;
+use App\Models\SubCategoryModel;
+use App\Models\AssetImageModel;
 use CodeIgniter\Controller;
-
 
 class ModelsController extends Controller
 {
@@ -17,14 +17,15 @@ class ModelsController extends Controller
         $subCategoryModel = new SubCategoryModel();
 
         $data['categories'] = $categoryModel->findAll();
-        $data['subcategories'] = $subCategoryModel->findAll();   // ✅ Add this
-
+        $data['subcategories'] = $subCategoryModel->findAll();
         $data['models'] = $modelModel->getAssetModelsWithCategories();
+        $data['models'] = $modelModel->getAssetModelsWithImages();
+
 
         // Fetch model to edit
         $data['editModel'] = [];
         if ($id) {
-            $data['editModel'] = $categoryModel->find($id);  // Make sure this returns an array
+            $data['editModel'] = $categoryModel->find($id);
         }
 
         echo view('includes/sidebar');
@@ -33,50 +34,67 @@ class ModelsController extends Controller
         echo view('includes/footer');
     }
 
-
-
     public function store()
     {
         $model = new ModelModel();
+        $imageModel = new AssetImageModel();
+        $subCategoryModel = new SubCategoryModel();
 
         $sub_category_id = $this->request->getPost('sub_category_id');
 
-        // Optional validation: make sure the subcategory exists
-        $subCategoryModel = new SubCategoryModel();
+        // Validate subcategory
         if (!$subCategoryModel->find($sub_category_id)) {
             return redirect()->back()->with('error', 'Invalid Sub Category selected');
         }
-        $model->save([
-            'category_id' => $this->request->getPost('category_id'),
-            'sub_category_id' => $sub_category_id,  // ✅ Add this
 
-            'name'        => $this->request->getPost('name'),
-            'description' => $this->request->getPost('description')
+        // Save model data
+        $model->save([
+            'category_id'     => $this->request->getPost('category_id'),
+            'sub_category_id' => $sub_category_id,
+            'name'            => $this->request->getPost('name'),
+            'description'     => $this->request->getPost('description')
         ]);
-        return redirect()->to('/assets/models');
+
+        $modelId = $model->getInsertID();
+
+        // Handle image upload
+        $file = $this->request->getFile('model_image');
+        if ($file && $file->isValid() && !$file->hasMoved()) {
+
+            // Generate a random filename
+            $newName = $file->getRandomName();
+
+            $uploadPath = FCPATH . 'uploads/models/';
+            $file->move($uploadPath, $newName);
+            $imageModel->save([
+                'model_id' => $modelId,
+                'image_path' => 'uploads/models/' . $newName
+            ]);
+        }
+
+        return redirect()->to('/assets/models')->with('success', 'Model created successfully');
     }
 
     public function update($id)
-{
-    $model = new ModelModel();
-    $sub_category_id = $this->request->getPost('sub_category_id');
+    {
+        $model = new ModelModel();
+        $subCategoryModel = new SubCategoryModel();
 
-    // Optional: validate the subcategory exists
-    $subCategoryModel = new SubCategoryModel();
-    if (!$subCategoryModel->find($sub_category_id)) {
-        return redirect()->back()->with('error', 'Invalid Sub Category selected');
+        $sub_category_id = $this->request->getPost('sub_category_id');
+
+        if (!$subCategoryModel->find($sub_category_id)) {
+            return redirect()->back()->with('error', 'Invalid Sub Category selected');
+        }
+
+        $model->update($id, [
+            'category_id'    => $this->request->getPost('category_id'),
+            'sub_category_id' => $sub_category_id,
+            'name'           => $this->request->getPost('name'),
+            'description'    => $this->request->getPost('description')
+        ]);
+
+        return redirect()->to('/assets/models')->with('success', 'Model updated successfully');
     }
-
-    $model->update($id, [
-        'category_id'    => $this->request->getPost('category_id'),
-        'sub_category_id'=> $sub_category_id,   // ✅ add this
-        'name'           => $this->request->getPost('name'),
-        'description'    => $this->request->getPost('description')
-    ]);
-
-    return redirect()->to('/assets/models')->with('success', 'Model updated successfully');
-}
-
 
     public function delete($id)
     {

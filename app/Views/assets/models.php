@@ -18,7 +18,7 @@
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <form action="/assets/models/add" method="post">
+            <form action="/assets/models/add" method="post" enctype="multipart/form-data">
                 <div class="modal-body">
                     <div class="form-group">
                         <select name="category_id" class="form-control" required>
@@ -38,10 +38,14 @@
                                 <option value="<?= $subcategory['id'] ?>"><?= $subcategory['name'] ?> (<?= $subcategory['sub_category_code'] ?>)</option>
                             <?php endforeach; ?>
                         </select>
-                    </div>
+                            </div>
+                            <form action="/assets/models/add" method="post" enctype="multipart/form-data">
+  
 
-
-
+        <div class="form-group">
+            <label for="model_image">Upload Model Image</label>
+            <input type="file" class="form-control" name="model_image" accept="image/*">
+        </div>
 
                     <div class="form-group">
                         <input type="text" class="form-control" name="description" placeholder="Description">
@@ -72,6 +76,7 @@
                             <th>Category</th>
                             <th>Model Name</th>
                             <th>Sub Category & Code</th>
+                            <th>Asset Image</th>
                             <th>Description</th>
                             <th>Actions</th>
                         </tr>
@@ -83,6 +88,14 @@
                                 <td><?= $m['category_name'] ?></td>
                                 <td><?= $m['name'] ?></td>
                                 <td><?= $m['sub_category_code'] ?></td>
+                                <td>
+    <?php if (!empty($m['image_path'])): ?>
+        <img src="<?= base_url($m['image_path']) ?>" alt="Model Image" style="width:80px; height:auto;">
+    <?php else: ?>
+        No Image
+    <?php endif; ?>
+</td>
+
                                 <td><?= $m['description'] ?></td>
 
                                 <td>
