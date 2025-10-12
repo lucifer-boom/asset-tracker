@@ -76,25 +76,63 @@ class ModelsController extends Controller
     }
 
     public function update($id)
-    {
-        $model = new ModelModel();
-        $subCategoryModel = new SubCategoryModel();
+{
+    $model = new \App\Models\ModelModel();
+    $imageModel = new \App\Models\AssetImageModel();
+    $subCategoryModel = new \App\Models\SubCategoryModel();
 
-        $sub_category_id = $this->request->getPost('sub_category_id');
+    $sub_category_id = $this->request->getPost('sub_category_id');
 
-        if (!$subCategoryModel->find($sub_category_id)) {
-            return redirect()->back()->with('error', 'Invalid Sub Category selected');
+    // Validate subcategory
+    if (!$subCategoryModel->find($sub_category_id)) {
+        return redirect()->back()->with('error', 'Invalid Sub Category selected');
+    }
+
+    // ✅ Update model details
+    $model->update($id, [
+        'category_id'     => $this->request->getPost('category_id'),
+        'sub_category_id' => $sub_category_id,
+        'name'            => $this->request->getPost('name'),
+        'description'     => $this->request->getPost('description'),
+    ]);
+
+    // ✅ Handle new image upload
+    $file = $this->request->getFile('model_image');
+    if ($file && $file->isValid() && !$file->hasMoved()) {
+        $uploadPath = FCPATH . 'uploads/models/';
+        if (!is_dir($uploadPath)) {
+            mkdir($uploadPath, 0777, true);
         }
 
-        $model->update($id, [
-            'category_id'    => $this->request->getPost('category_id'),
-            'sub_category_id' => $sub_category_id,
-            'name'           => $this->request->getPost('name'),
-            'description'    => $this->request->getPost('description')
-        ]);
+        $newName = $file->getRandomName();
+        $file->move($uploadPath, $newName);
 
-        return redirect()->to('/assets/models')->with('success', 'Model updated successfully');
+        // Check if old image exists for this model
+        $existingImage = $imageModel->where('model_id', $id)->first();
+
+        if ($existingImage) {
+            // Delete old image file (optional)
+            $oldImagePath = FCPATH . $existingImage['image_path'];
+            if (file_exists($oldImagePath)) {
+                unlink($oldImagePath);
+            }
+
+            // Update existing image record
+            $imageModel->update($existingImage['id'], [
+                'image_path' => 'uploads/models/' . $newName
+            ]);
+        } else {
+            // Insert new image record
+            $imageModel->save([
+                'model_id'   => $id,
+                'image_path' => 'uploads/models/' . $newName
+            ]);
+        }
     }
+
+    return redirect()->to('/assets/models')->with('success', 'Model updated successfully');
+}
+
 
     public function delete($id)
     {

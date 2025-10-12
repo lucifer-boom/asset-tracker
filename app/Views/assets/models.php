@@ -121,43 +121,75 @@
                                                 <span aria-hidden="true">&times;</span>
                                             </button>
                                         </div>
-                                        <form action="/assets/models/update/<?= $m['id'] ?>" method="post">
-                                            <div class="modal-body">
-                                                <div class="form-group">
-                                                    <select name="category_id" class="form-control" required>
-                                                        <option value="">Select Category</option>
-                                                        <?php foreach ($categories as $cat): ?>
-                                                            <option value="<?= $cat['id'] ?>"
-                                                                <?= (isset($editModel['category_id']) && $editModel['category_id'] == $cat['id']) ? 'selected' : '' ?>>
-                                                                <?= $cat['name'] ?>
-                                                            </option>
-                                                        <?php endforeach; ?>
-                                                    </select>
-                                                </div>
+                                        <form action="/assets/models/update/<?= $m['id'] ?>" method="post" enctype="multipart/form-data">
+    <div class="modal-body">
+        <!-- Category -->
+        <div class="form-group mb-3">
+            <label for="category_id">Select Category</label>
+            <select name="category_id" class="form-control" required>
+                <option value="">Select Category</option>
+                <?php foreach ($categories as $cat): ?>
+                    <option value="<?= $cat['id'] ?>" 
+                        <?= ($m['category_id'] == $cat['id']) ? 'selected' : '' ?>>
+                        <?= esc($cat['name']) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
 
-                                                <div class="form-group">
-                                                    <select name="sub_category_id" class="form-control" required>
-                                                        <option value="">Select Sub Category</option>
-                                                        <?php foreach ($subcategories as $subcategory): ?>
-                                                            <option value="<?= $subcategory['id'] ?>"
-                                                                <?= (isset($editModel['sub_category_id']) && $editModel['sub_category_id'] == $subcategory['id']) ? 'selected' : '' ?>>
-                                                                <?= $subcategory['name'] ?> (<?= $subcategory['sub_category_code'] ?>)
-                                                            </option>
-                                                        <?php endforeach; ?>
-                                                    </select>
-                                                </div>
-                                                <div class="form-group">
-                                                    <input type="text" class="form-control" name="name" value="<?= $m['name'] ?>" required>
-                                                </div>
-                                                <div class="form-group">
-                                                    <input type="text" class="form-control" name="description" value="<?= $m['description'] ?>">
-                                                </div>
-                                            </div>
-                                            <div class="modal-footer">
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                                <button type="submit" class="btn btn-primary">Save Changes</button>
-                                            </div>
-                                        </form>
+        <!-- Sub Category -->
+        <div class="form-group mb-3">
+            <label for="sub_category_id">Select Sub Category</label>
+            <select name="sub_category_id" class="form-control" required>
+                <option value="">Select Sub Category</option>
+                <?php foreach ($subcategories as $subcategory): ?>
+                    <option value="<?= $subcategory['id'] ?>" 
+                        <?= ($m['sub_category_id'] == $subcategory['id']) ? 'selected' : '' ?>>
+                        <?= esc($subcategory['name']) ?> (<?= esc($subcategory['sub_category_code']) ?>)
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+
+        <!-- Model Name -->
+        <div class="form-group mb-3">
+            <label for="name">Model Name</label>
+            <input type="text" class="form-control" name="name" 
+                   value="<?= esc($m['name']) ?>" required>
+        </div>
+
+        <!-- Description -->
+        <div class="form-group mb-3">
+            <label for="description">Description</label>
+            <input type="text" class="form-control" name="description" 
+                   value="<?= esc($m['description']) ?>">
+        </div>
+
+        <!-- Image Upload -->
+        <div class="form-group mb-3">
+            <label for="model_image">Upload New Image (optional)</label>
+            <input type="file" class="form-control" name="model_image" accept="image/*">
+        </div>
+
+        <!-- Current Image Preview -->
+        <?php if (!empty($m['image_path'])): ?>
+            <div class="text-center mt-3">
+                <label>Current Image:</label><br>
+                <img src="<?= base_url($m['image_path']) ?>" 
+                     alt="Model Image" width="120" height="120"
+                     class="rounded border mt-1" style="object-fit:cover;">
+            </div>
+        <?php else: ?>
+            <p class="text-muted text-center mt-2">No image uploaded</p>
+        <?php endif; ?>
+    </div>
+
+    <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+    </div>
+</form>
+
                                     </div>
                                 </div>
                             </div>
