@@ -84,9 +84,6 @@ $routes->get('assets/transfer/approve/(:num)/(:any)', '\App\Controllers\AssetTra
 $routes->get('assets/transfer/reject/(:num)/(:any)', '\App\Controllers\AssetTransferController::emailReject/$1/$2');
 $routes->get('assets/transfer/receiveAsset/(:num)/(:any)', 'AssetTransferController::receiveAsset/$1/$2');
 
-
-
-
 //Asset Maintenance
 $routes->get('/assets/maintenance', 'AssetMaintenanceController::index');
 $routes->get('/assets/maintenance/create', 'AssetMaintenanceController::create');
@@ -95,6 +92,10 @@ $routes->post('/assets/maintenance/store', 'AssetMaintenanceController::store');
 //Asset Sticker generate
 $routes->get('/assets/sticker/(:num)', 'AssetController::generateSticker/$1');
 $routes->get('/assets/downloadSticker/(:num)', 'AssetController::downloadSticker/$1');
+
+//Acceosries manage and QR code generate
+$routes->get('/accessories/manage', 'AccessoryController::index');
+$routes->post('/accesories/add', 'AccessoryController::store');
 
 
 // Show all licenses
